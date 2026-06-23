@@ -1839,6 +1839,9 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
+        // 像素风格背景
+        this.createPixelBackground();
+
         // 玩家
         this.player = this.add.rectangle(GAME_WIDTH/2, GAME_HEIGHT/2, 40, 40, 0x4488ff);
 
@@ -2522,6 +2525,31 @@ class GameScene extends Phaser.Scene {
         }
     }
 
+    createPixelBackground() {
+        const bg = this.add.container(0, 0).setDepth(-1);
+
+        const gradient = this.add.rectangle(GAME_WIDTH/2, GAME_HEIGHT/2, GAME_WIDTH, GAME_HEIGHT, 0x0d0d1a);
+        bg.add(gradient);
+
+        for (let i = 0; i < 15; i++) {
+            const x = Phaser.Math.Between(0, GAME_WIDTH);
+            const y = Phaser.Math.Between(0, GAME_HEIGHT);
+            const twinkle = this.add.rectangle(x, y, 2, 2, 0xffffff, 0.2);
+            bg.add(twinkle);
+            this.tweens.add({
+                targets: twinkle,
+                alpha: [0.1, 0.5, 0.1],
+                duration: 1500 + Phaser.Math.Between(0, 1000),
+                repeat: -1,
+                delay: Phaser.Math.Between(0, 2000)
+            });
+        }
+
+        const border = this.add.rectangle(GAME_WIDTH/2, GAME_HEIGHT/2, GAME_WIDTH - 4, GAME_HEIGHT - 4, 0x1a1a3a, 0);
+        border.setStrokeStyle(4, 0x2a2a4a);
+        bg.add(border);
+    }
+
     toggleVolume() {
         const enabled = this.soundManager.toggle();
 
@@ -2650,7 +2678,7 @@ const config = {
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
     parent: 'game-container',
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#0d0d1a',
     pixelArt: true,
     physics: {
         default: 'arcade',
