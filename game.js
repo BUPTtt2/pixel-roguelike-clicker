@@ -1566,6 +1566,84 @@ class MenuScene extends Phaser.Scene {
             fontSize: '14px',
             color: '#888888'
         }).setOrigin(0.5);
+
+        // 帮助按钮
+        const helpBtn = this.add.text(GAME_WIDTH - 30, 20, '❓', {
+            fontSize: '28px'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        helpBtn.on('pointerdown', () => this.showTutorial());
+    }
+
+    showTutorial() {
+        if (this.tutorialOverlay) return;
+
+        this.tutorialOverlay = this.add.container(0, 0);
+
+        // 背景
+        const bg = this.add.rectangle(GAME_WIDTH/2, GAME_HEIGHT/2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.9);
+        this.tutorialOverlay.add(bg);
+
+        // 标题
+        const title = this.add.text(GAME_WIDTH/2, 50, '📖 游戏教程', {
+            fontFamily: 'Courier New',
+            fontSize: '32px',
+            color: '#ffd700'
+        }).setOrigin(0.5);
+        this.tutorialOverlay.add(title);
+
+        // 教程内容
+        const tutorials = [
+            { icon: '👆', title: '点击攻击', desc: '点击屏幕任意位置攻击敌人' },
+            { icon: '👾', title: '敌人', desc: '敌人会向玩家移动，超时会造成伤害' },
+            { icon: '👹', title: 'Boss', desc: '击败Boss获得奖励选择机会' },
+            { icon: '⬆️', title: '升级', desc: '获得经验升级，选择专精强化角色' },
+            { icon: '⚔️', title: '武器', desc: 'Boss后可升级武器，最高5级' },
+            { icon: '👼', title: '随从', desc: '解锁后可在奖励中获得随从帮助' },
+            { icon: '⏸️', title: '暂停', desc: '点击暂停按钮暂停游戏' },
+            { icon: '🔊', title: '音效', desc: '点击音量按钮开关音效' }
+        ];
+
+        tutorials.forEach((t, i) => {
+            const y = 100 + i * 55;
+            const row = this.add.container(GAME_WIDTH/2, y);
+
+            const icon = this.add.text(-200, 0, t.icon, { fontSize: '24px' }).setOrigin(0.5);
+            const titleText = this.add.text(-150, 0, t.title, {
+                fontFamily: 'Courier New',
+                fontSize: '18px',
+                color: '#ffffff'
+            }).setOrigin(0, 0.5);
+            const descText = this.add.text(50, 0, t.desc, {
+                fontFamily: 'Courier New',
+                fontSize: '14px',
+                color: '#aaaaaa'
+            }).setOrigin(0, 0.5);
+
+            row.add([icon, titleText, descText]);
+            this.tutorialOverlay.add(row);
+        });
+
+        // 关闭按钮
+        const closeBtn = this.add.rectangle(GAME_WIDTH/2, GAME_HEIGHT - 50, 150, 40, 0x4a4a6a);
+        closeBtn.setInteractive({ useHandCursor: true });
+        closeBtn.on('pointerover', () => closeBtn.setFillStyle(0x6a6a8a));
+        closeBtn.on('pointerout', () => closeBtn.setFillStyle(0x4a4a6a));
+        closeBtn.on('pointerdown', () => this.hideTutorial());
+
+        const closeText = this.add.text(GAME_WIDTH/2, GAME_HEIGHT - 50, '关闭', {
+            fontFamily: 'Courier New',
+            fontSize: '20px',
+            color: '#ffffff'
+        }).setOrigin(0.5);
+
+        this.tutorialOverlay.add([closeBtn, closeText]);
+    }
+
+    hideTutorial() {
+        if (this.tutorialOverlay) {
+            this.tutorialOverlay.destroy();
+            this.tutorialOverlay = null;
+        }
     }
 
     createWeaponSelect() {
