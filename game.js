@@ -283,11 +283,26 @@ class Enemy {
             'gargoyle': 0x888888
         };
 
+        // 敌人图标
+        const icons = {
+            'slime': '🟢',
+            'bat': '🦇',
+            'skeleton': '💀',
+            'ghost': '👻',
+            'gargoyle': '🗿'
+        };
+
         const color = colors[this.type] || 0xff0000;
         const size = this.type === 'gargoyle' ? 40 : 32;
+        const icon = icons[this.type] || '👾';
 
         this.sprite = this.scene.add.rectangle(x, y, size, size, color);
         this.sprite.setData('enemy', this);
+
+        // 敌人图标
+        this.iconText = this.scene.add.text(x, y, icon, {
+            fontSize: size + 'px'
+        }).setOrigin(0.5).setDepth(1);
 
         // 血条背景
         this.hpBarBg = this.scene.add.rectangle(x, y - size/2 - 8, size, 4, 0x333333);
@@ -337,6 +352,8 @@ class Enemy {
             const ratio = Math.max(0, this.hp / this.maxHp);
             this.hpBar.setScale(ratio, 1);
             this.hpBar.x = this.sprite.x - (this.sprite.width * (1 - ratio)) / 2;
+            this.iconText.x = this.sprite.x;
+            this.iconText.y = this.sprite.y;
         }
     }
 
@@ -349,7 +366,7 @@ class Enemy {
         // 死亡特效
         if (this.sprite) {
             this.scene.tweens.add({
-                targets: [this.sprite, this.hpBar, this.hpBarBg],
+                targets: [this.sprite, this.iconText, this.hpBar, this.hpBarBg],
                 alpha: 0,
                 scale: 0,
                 duration: 200,
@@ -376,6 +393,7 @@ class Enemy {
 
     destroy() {
         if (this.sprite) this.sprite.destroy();
+        if (this.iconText) this.iconText.destroy();
         if (this.hpBar) this.hpBar.destroy();
         if (this.hpBarBg) this.hpBarBg.destroy();
     }
