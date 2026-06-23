@@ -9,6 +9,192 @@
 const GAME_WIDTH = 800;
 const GAME_HEIGHT = 600;
 
+// ==================== 粒子效果系统 ====================
+
+/**
+ * ParticleManager - 粒子效果管理器
+ */
+class ParticleManager {
+    constructor(scene) {
+        this.scene = scene;
+        this.particles = [];
+    }
+
+    // 金币掉落粒子
+    createGoldParticles(x, y, count = 5) {
+        for (let i = 0; i < count; i++) {
+            const particle = this.scene.add.text(x, y, '💰', {
+                fontSize: '16px'
+            }).setOrigin(0.5);
+
+            const targetX = GAME_WIDTH - 150;
+            const targetY = 20;
+
+            this.scene.tweens.add({
+                targets: particle,
+                x: targetX + Phaser.Math.Between(-20, 20),
+                y: targetY + Phaser.Math.Between(-10, 10),
+                alpha: 0,
+                scale: 0.5,
+                duration: 600 + Phaser.Math.Between(0, 200),
+                ease: 'Power2',
+                onComplete: () => particle.destroy()
+            });
+        }
+    }
+
+    // 经验获取粒子
+    createExpParticles(x, y, count = 3) {
+        for (let i = 0; i < count; i++) {
+            const particle = this.scene.add.text(x, y, '✨', {
+                fontSize: '14px'
+            }).setOrigin(0.5);
+
+            const targetX = 110;
+            const targetY = 50;
+
+            this.scene.tweens.add({
+                targets: particle,
+                x: targetX,
+                y: targetY,
+                alpha: 0,
+                scale: 0.3,
+                duration: 500,
+                ease: 'Power2',
+                onComplete: () => particle.destroy()
+            });
+        }
+    }
+
+    // 击杀爆炸粒子
+    createKillParticles(x, y) {
+        const colors = [0xff0000, 0xff6600, 0xffff00, 0xff00ff];
+        const count = 8;
+
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const distance = 30;
+
+            const particle = this.scene.add.circle(x, y, 4, colors[i % colors.length]);
+
+            this.scene.tweens.add({
+                targets: particle,
+                x: x + Math.cos(angle) * distance,
+                y: y + Math.sin(angle) * distance,
+                alpha: 0,
+                scale: 0,
+                duration: 300,
+                ease: 'Power2',
+                onComplete: () => particle.destroy()
+            });
+        }
+    }
+
+    // Boss击败大爆炸
+    createBossDefeatParticles(x, y) {
+        const colors = [0xffd700, 0xff6600, 0xff0000, 0x00ffff, 0xff00ff];
+        const count = 20;
+
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const distance = 60 + Phaser.Math.Between(0, 30);
+
+            const particle = this.scene.add.circle(x, y, 6, colors[i % colors.length]);
+
+            this.scene.tweens.add({
+                targets: particle,
+                x: x + Math.cos(angle) * distance,
+                y: y + Math.sin(angle) * distance,
+                alpha: 0,
+                scale: 0,
+                duration: 500 + Phaser.Math.Between(0, 200),
+                ease: 'Power2',
+                onComplete: () => particle.destroy()
+            });
+        }
+
+        // 中心爆炸
+        const center = this.scene.add.circle(x, y, 30, 0xffd700, 0.8);
+        this.scene.tweens.add({
+            targets: center,
+            scale: 2,
+            alpha: 0,
+            duration: 400,
+            onComplete: () => center.destroy()
+        });
+    }
+
+    // 升级星星粒子
+    createLevelUpParticles() {
+        const x = GAME_WIDTH / 2;
+        const y = GAME_HEIGHT / 2;
+
+        for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2;
+            const startDist = 50;
+            const endDist = 150;
+
+            const particle = this.scene.add.text(
+                x + Math.cos(angle) * startDist,
+                y + Math.sin(angle) * startDist,
+                '⭐',
+                { fontSize: '20px' }
+            ).setOrigin(0.5);
+
+            this.scene.tweens.add({
+                targets: particle,
+                x: x + Math.cos(angle) * endDist,
+                y: y + Math.sin(angle) * endDist,
+                alpha: 0,
+                scale: 0.5,
+                duration: 800,
+                ease: 'Power2',
+                onComplete: () => particle.destroy()
+            });
+        }
+    }
+
+    // 随从攻击粒子
+    createMinionAttackParticles(x, y) {
+        const particle = this.scene.add.circle(x, y, 10, 0x888888, 0.6);
+        this.scene.tweens.add({
+            targets: particle,
+            scale: 2,
+            alpha: 0,
+            duration: 200,
+            onComplete: () => particle.destroy()
+        });
+    }
+
+    // 回血粒子
+    createHealParticles() {
+        const x = GAME_WIDTH / 2;
+        const y = GAME_HEIGHT / 2;
+
+        for (let i = 0; i < 6; i++) {
+            const offsetY = -30 - i * 20;
+            const particle = this.scene.add.text(x, y + offsetY, '❤️', {
+                fontSize: '16px'
+            }).setOrigin(0.5).setAlpha(0);
+
+            this.scene.tweens.add({
+                targets: particle,
+                alpha: 1,
+                y: y + offsetY - 30,
+                duration: 300,
+                delay: i * 100,
+                yoyo: true,
+                onComplete: () => particle.destroy()
+            });
+        }
+    }
+
+    clear() {
+        this.particles.forEach(p => p.destroy());
+        this.particles = [];
+    }
+}
+
 // ==================== 音效系统 ====================
 
 /**
@@ -522,10 +708,17 @@ class EnemyManager {
             this.spawnEnemy();
         }
 
-        // 更新所有敌人
+        // 玩家位置
+        const playerX = GAME_WIDTH / 2;
+        const playerY = GAME_HEIGHT / 2;
+
+        // 更新所有敌人（移动和超时检测）
         const damages = [];
         this.enemies.forEach(enemy => {
             if (enemy.alive) {
+                // 移动敌人向玩家
+                this.moveEnemy(enemy, playerX, playerY, delta);
+
                 const damage = enemy.update(time);
                 if (damage > 0) {
                     damages.push({ enemy, damage });
@@ -586,6 +779,37 @@ class EnemyManager {
         };
         const base = baseStats[type] || baseStats['slime'];
         return base.map(v => Math.floor(v * difficulty));
+    }
+
+    moveEnemy(enemy, targetX, targetY, delta) {
+        if (!enemy.sprite) return;
+
+        // 敌人速度（像素/秒）
+        const speeds = {
+            'slime': 30,
+            'bat': 60,
+            'skeleton': 40,
+            'ghost': 50,
+            'gargoyle': 25
+        };
+        const speed = speeds[enemy.type] || 30;
+
+        // 计算方向
+        const dx = targetX - enemy.sprite.x;
+        const dy = targetY - enemy.sprite.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // 如果距离大于50像素，继续移动
+        if (distance > 50) {
+            const moveX = (dx / distance) * speed * (delta / 1000);
+            const moveY = (dy / distance) * speed * (delta / 1000);
+
+            enemy.sprite.x += moveX;
+            enemy.sprite.y += moveY;
+
+            // 更新血条和图标位置
+            enemy.updateHPBar();
+        }
     }
 
     getRandomSpawnPosition() {
@@ -1358,6 +1582,9 @@ class GameScene extends Phaser.Scene {
         this.enemyManager = new EnemyManager(this);
         this.bossManager = new BossManager(this);
 
+        // 粒子效果
+        this.particleManager = new ParticleManager(this);
+
         // 音效
         this.soundManager = new SoundManager(this);
 
@@ -1575,6 +1802,9 @@ class GameScene extends Phaser.Scene {
         // 回血音效
         this.soundManager.play('heal');
 
+        // 回血粒子效果
+        this.particleManager.createHealParticles();
+
         const text = this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 - 50, '+HP', {
             fontFamily: 'Courier New',
             fontSize: '20px',
@@ -1606,6 +1836,13 @@ class GameScene extends Phaser.Scene {
 
         // 击杀音效
         this.soundManager.play('kill');
+
+        // 粒子效果
+        if (enemy.sprite) {
+            this.particleManager.createKillParticles(enemy.sprite.x, enemy.sprite.y);
+            this.particleManager.createGoldParticles(enemy.sprite.x, enemy.sprite.y, 3);
+            this.particleManager.createExpParticles(enemy.sprite.x, enemy.sprite.y, 2);
+        }
 
         // 金币加成
         const goldBonus = 1 + this.runtime.specializations.gold * 0.1;
@@ -1664,6 +1901,9 @@ class GameScene extends Phaser.Scene {
     showLevelUpEffect() {
         // 升级音效
         this.soundManager.play('levelUp');
+
+        // 升级粒子效果
+        this.particleManager.createLevelUpParticles();
 
         const text = this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2, 'LEVEL UP!', {
             fontFamily: 'Courier New',
@@ -1748,6 +1988,14 @@ class GameScene extends Phaser.Scene {
 
         // Boss击败音效
         this.soundManager.play('bossDefeat');
+
+        // Boss击败粒子效果
+        if (this.bossManager.currentBoss && this.bossManager.currentBoss.sprite) {
+            this.particleManager.createBossDefeatParticles(
+                this.bossManager.currentBoss.sprite.x,
+                this.bossManager.currentBoss.sprite.y
+            );
+        }
 
         this.bossManager.onBossDefeated();
 
