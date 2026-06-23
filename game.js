@@ -286,6 +286,49 @@ class SoundManager {
     }
 }
 
+// ==================== 成就系统 ====================
+
+/**
+ * AchievementManager - 成就管理器
+ */
+const AchievementManager = {
+    achievements: {
+        'first_boss': { name: '初次胜利', icon: '🏆', desc: '击败第一个Boss', condition: (r) => r.bossCount >= 1 },
+        'boss_slayer': { name: 'Boss猎手', icon: '👹', desc: '击败3个Boss', condition: (r) => r.bossCount >= 3 },
+        'boss_master': { name: 'Boss大师', icon: '👑', desc: '击败5个Boss', condition: (r) => r.bossCount >= 5 },
+        'survivor_1min': { name: '生存新手', icon: '⏱️', desc: '存活1分钟', condition: (r) => r.survivalTime >= 60 },
+        'survivor_5min': { name: '生存达人', icon: '⏱️', desc: '存活5分钟', condition: (r) => r.survivalTime >= 300 },
+        'survivor_10min': { name: '生存大师', icon: '⏱️', desc: '存活10分钟', condition: (r) => r.survivalTime >= 600 },
+        'killer_50': { name: '杀戮新手', icon: '💀', desc: '击杀50敌人', condition: (r) => r.killCount >= 50 },
+        'killer_200': { name: '杀戮达人', icon: '💀', desc: '击杀200敌人', condition: (r) => r.killCount >= 200 },
+        'gold_100': { name: '小富翁', icon: '💰', desc: '单局获得100金币', condition: (r) => r.totalGoldEarned >= 100 },
+        'gold_500': { name: '大富翁', icon: '💰', desc: '单局获得500金币', condition: (r) => r.totalGoldEarned >= 500 },
+        'level_10': { name: '升级达人', icon: '⬆️', desc: '达到10级', condition: (r) => r.level >= 10 },
+        'level_20': { name: '升级大师', icon: '⬆️', desc: '达到20级', condition: (r) => r.level >= 20 },
+        'weapon_max': { name: '武器大师', icon: '⚔️', desc: '武器达到5级', condition: (r) => r.weaponLevel >= 5 },
+        'minion_owner': { name: '随从主人', icon: '👼', desc: '获得随从', condition: (r) => r.minion !== null }
+    },
+
+    check(runtime, data) {
+        const newAchievements = [];
+        Object.entries(this.achievements).forEach(([key, ach]) => {
+            if (!data.achievements.includes(key) && ach.condition(runtime)) {
+                newAchievements.push(key);
+                data.achievements.push(key);
+            }
+        });
+        return newAchievements;
+    },
+
+    getInfo(key) {
+        return this.achievements[key] || null;
+    },
+
+    getAll() {
+        return this.achievements;
+    }
+};
+
 // ==================== 数据管理 ====================
 
 /**
@@ -2348,6 +2391,9 @@ class GameScene extends Phaser.Scene {
         if (this.runtime.survivalTime > data.bestTime) {
             data.bestTime = this.runtime.survivalTime;
         }
+
+        // 检查成就
+        const newAchievements = AchievementManager.check(this.runtime, data);
         GameData.save(data);
 
         // 跳转结算
@@ -2356,7 +2402,8 @@ class GameScene extends Phaser.Scene {
             gold: this.runtime.totalGoldEarned,
             level: this.runtime.level,
             bossCount: this.runtime.bossCount,
-            killCount: this.runtime.killCount
+            killCount: this.runtime.killCount,
+            newAchievements: newAchievements
         });
     }
 
@@ -2494,6 +2541,26 @@ class GameOverScene extends Phaser.Scene {
             fontSize: '20px',
             color: '#ffd700'
         }).setOrigin(0.5);
+
+        // 本局解锁的成就
+        if (this.result.newAchievements && this.result.newAchievements.length > 0) {
+            this.add.text(GAME_WIDTH/2, y + spacing * 8.5, '🎉 新成就解锁!', {
+                fontFamily: 'Courier New',
+                fontSize: '18px',
+                color: '#00ff00'
+            }).setOrigin(0.5);
+
+            this.result.newAchievements.forEach((key, i) => {
+                const ach = AchievementManager.getInfo(key);
+                if (ach) {
+                    this.add.text(GAME_WIDTH/2, y + spacing * 9.5 + i * 25, `${ach.icon} ${ach.name}`, {
+                        fontFamily: 'Courier New',
+                        fontSize: '14px',
+                        color: '#ffffff'
+                    }).setOrigin(0.5);
+                }
+            });
+        }
 
         // 按钮
         const restartBtn = this.add.rectangle(GAME_WIDTH/2, GAME_HEIGHT - 80, 200, 50, 0x4a4a6a);
