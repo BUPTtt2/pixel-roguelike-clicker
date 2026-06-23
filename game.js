@@ -325,11 +325,11 @@ class RuntimeData {
     }
 
     reset() {
-        this.hp = 100;
-        this.maxHp = 100;
+        this.hp = 150;           // 增加初始HP
+        this.maxHp = 150;
         this.level = 1;
         this.exp = 0;
-        this.expToNext = 50;
+        this.expToNext = 30;     // 降低初始经验阈值，更快升级
         this.gold = 0;
         this.specializationPoints = 0;
         this.weapon = null;
@@ -771,11 +771,11 @@ class EnemyManager {
     getEnemyStats(type) {
         const difficulty = 1 + (this.scene.runtime.survivalTime / 60) * 0.1;
         const baseStats = {
-            'slime':    [30, 5, 8],
-            'bat':      [20, 3, 6],
-            'skeleton': [50, 8, 10],
-            'ghost':    [40, 6, 7],
-            'gargoyle': [80, 10, 15]
+            'slime':    [25, 5, 6],    // 降低HP和超时阈值
+            'bat':      [15, 3, 5],
+            'skeleton': [40, 8, 8],
+            'ghost':    [35, 6, 6],
+            'gargoyle': [70, 10, 12]
         };
         const base = baseStats[type] || baseStats['slime'];
         return base.map(v => Math.floor(v * difficulty));
@@ -878,7 +878,7 @@ class BossManager {
     constructor(scene) {
         this.scene = scene;
         this.currentBoss = null;
-        this.bossSchedule = [60, 120, 180, 360, 540];
+        this.bossSchedule = [45, 90, 150, 240, 360];  // 更早出现Boss
         this.bossIndex = 0;
         this.bossActive = false;
     }
