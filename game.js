@@ -5,27 +5,9 @@
  * 使用 Phaser 3 开发
  */
 
-// ==================== 游戏配置 ====================
+// ==================== 游戏常量 ====================
 const GAME_WIDTH = 800;
 const GAME_HEIGHT = 600;
-
-const config = {
-    type: Phaser.AUTO,
-    width: GAME_WIDTH,
-    height: GAME_HEIGHT,
-    parent: 'game-container',
-    backgroundColor: '#1a1a2e',
-    pixelArt: true,
-    physics: {
-        default: 'arcade',
-        arcade: {
-            debug: false
-        }
-    },
-    scene: [BootScene, MenuScene, GameScene, GameOverScene]
-};
-
-const game = new Phaser.Game(config);
 
 // ==================== 数据管理 ====================
 
@@ -1789,3 +1771,22 @@ class GameOverScene extends Phaser.Scene {
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     }
 }
+
+// ==================== 游戏初始化 ====================
+const config = {
+    type: Phaser.AUTO,
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
+    parent: 'game-container',
+    backgroundColor: '#1a1a2e',
+    pixelArt: true,
+    physics: {
+        default: 'arcade',
+        arcade: {
+            debug: false
+        }
+    },
+    scene: [BootScene, MenuScene, GameScene, GameOverScene]
+};
+
+const game = new Phaser.Game(config);
