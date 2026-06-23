@@ -2081,15 +2081,20 @@ class GameScene extends Phaser.Scene {
         const color = hit ? (isCrit ? 0xff0000 : colors[type]) : 0x888888;
         const size = isCrit ? 30 : 20;
 
-        // 根据武器类型显示不同形状特效
-        let effect;
+        const weaponIcons = {
+            single: '⚔️',
+            aoe: '🪓',
+            pierce: '🔮',
+            projectile: '🏹',
+            bounce: '🪄'
+        };
+
         switch (type) {
             case 'single':
-                // 短剑：圆形闪光
-                effect = this.add.circle(x, y, size, color, 0.6);
+                effect = this.add.circle(x, y, size, color, 0.8);
                 this.tweens.add({
                     targets: effect,
-                    scale: 2,
+                    scale: 3,
                     alpha: 0,
                     duration: 150,
                     onComplete: () => effect.destroy()
@@ -2097,59 +2102,62 @@ class GameScene extends Phaser.Scene {
                 break;
 
             case 'aoe':
-                // 战斧：大范围圆形
-                effect = this.add.circle(x, y, size * 2, color, 0.4);
+                effect = this.add.circle(x, y, size * 3, color, 0.5);
                 this.tweens.add({
                     targets: effect,
-                    scale: 1.5,
+                    scale: 2,
                     alpha: 0,
                     duration: 300,
                     onComplete: () => effect.destroy()
                 });
-                // 添加冲击波
-                const wave = this.add.circle(x, y, 10, color, 0.3);
+                const wave = this.add.circle(x, y, 15, color, 0.4);
                 this.tweens.add({
                     targets: wave,
-                    scale: 8,
+                    scale: 10,
                     alpha: 0,
-                    duration: 400,
+                    duration: 500,
                     onComplete: () => wave.destroy()
                 });
                 break;
 
             case 'pierce':
-                // 法杖：线形特效
-                effect = this.add.rectangle(x, y, 60, 8, color, 0.6);
-                this.tweens.add({
-                    targets: effect,
-                    scaleX: 0,
-                    alpha: 0,
-                    duration: 200,
-                    onComplete: () => effect.destroy()
-                });
+                for (let i = 0; i < 3; i++) {
+                    const line = this.add.rectangle(x, y, 80, 6, color, 0.7);
+                    line.rotation = Phaser.Math.DegToRad(-15 + i * 15);
+                    this.tweens.add({
+                        targets: line,
+                        scaleX: 0,
+                        alpha: 0,
+                        duration: 200,
+                        delay: i * 50,
+                        onComplete: () => line.destroy()
+                    });
+                }
                 break;
 
             case 'projectile':
-                // 弓箭：箭形特效
-                effect = this.add.triangle(x, y, 0, -size, -size/2, size, size/2, size, color, 0.6);
+                const arrow = this.add.text(x, y, '🏹', { fontSize: '24px' }).setOrigin(0.5);
                 this.tweens.add({
-                    targets: effect,
+                    targets: arrow,
                     alpha: 0,
+                    scale: 1.5,
                     duration: 150,
-                    onComplete: () => effect.destroy()
+                    onComplete: () => arrow.destroy()
                 });
                 break;
 
             case 'bounce':
-                // 魔杖：星形特效
-                effect = this.add.star(x, y, 5, size/2, size, color, 0.6);
-                this.tweens.add({
-                    targets: effect,
-                    scale: 1.5,
-                    alpha: 0,
-                    duration: 200,
-                    onComplete: () => effect.destroy()
-                });
+                for (let i = 0; i < 3; i++) {
+                    const star = this.add.star(x, y, 5, size/2, size, color, 0.6);
+                    this.tweens.add({
+                        targets: star,
+                        scale: 1.5,
+                        alpha: 0,
+                        duration: 200,
+                        delay: i * 100,
+                        onComplete: () => star.destroy()
+                    });
+                }
                 break;
 
             default:
