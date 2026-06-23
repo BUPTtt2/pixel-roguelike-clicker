@@ -1066,6 +1066,12 @@ class HUD {
         // 击杀数
         this.elements.killText = this.scene.add.text(20, GAME_HEIGHT - 30, '击杀: 0', { ...style, fontSize: '14px', color: '#888888' });
 
+        // 专精面板（显示当前专精等级）
+        this.elements.specPanelBg = this.scene.add.rectangle(20, GAME_HEIGHT - 100, 150, 60, 0x333333, 0.7);
+        this.elements.specPanelBg.setOrigin(0, 0.5);
+        this.elements.specPanelTitle = this.scene.add.text(25, GAME_HEIGHT - 115, '专精', { ...style, fontSize: '12px', color: '#ffffff' });
+        this.elements.specPanelContent = this.scene.add.text(25, GAME_HEIGHT - 95, '', { ...style, fontSize: '10px', color: '#00ffff' });
+
         // 暂停按钮
         this.elements.pauseBtn = this.scene.add.text(GAME_WIDTH - 30, GAME_HEIGHT - 30, '⏸️', {
             fontSize: '24px'
@@ -1112,6 +1118,34 @@ class HUD {
 
         // 击杀
         this.elements.killText.setText(`击杀: ${runtime.killCount}`);
+
+        // 更新专精面板
+        this.updateSpecPanel(runtime);
+    }
+
+    updateSpecPanel(runtime) {
+        const specs = runtime.specializations;
+        const specIcons = {
+            'attack': '⚔️',
+            'crit': '💥',
+            'attackSpeed': '⚡',
+            'hp': '❤️',
+            'armor': '🛡️',
+            'gold': '💰',
+            'exp': '✨',
+            'minion': '👼'
+        };
+
+        // 显示最高的3个专精
+        const sortedSpecs = Object.entries(specs)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3);
+
+        const content = sortedSpecs
+            .map(([key, level]) => `${specIcons[key] || '•'}${key.slice(0,3)}:${level}`)
+            .join(' ');
+
+        this.elements.specPanelContent.setText(content);
     }
 
     showBossWarning() {
@@ -1196,25 +1230,45 @@ class SpecializationUI {
     createCard(x, y, spec) {
         const container = this.scene.add.container(x, y);
 
-        const bg = this.scene.add.rectangle(0, 0, 150, 200, 0x4a4a6a);
+        // 根据专精类型设置颜色
+        const colors = {
+            'attack': 0xff6600,
+            'crit': 0xff0000,
+            'attackSpeed': 0xffff00,
+            'hp': 0x00ff00,
+            'armor': 0x0088ff,
+            'gold': 0xffd700,
+            'exp': 0x00ffff,
+            'minion': 0xff00ff
+        };
+        const color = colors[spec.key] || 0x4a4a6a;
+
+        const bg = this.scene.add.rectangle(0, 0, 150, 220, color);
         bg.setInteractive({ useHandCursor: true });
-        bg.on('pointerover', () => bg.setFillStyle(0x6a6a8a));
-        bg.on('pointerout', () => bg.setFillStyle(0x4a4a6a));
+        bg.on('pointerover', () => bg.setFillStyle(Phaser.Display.Color.IntegerToColor(color).lighten(20).color));
+        bg.on('pointerout', () => bg.setFillStyle(color));
         bg.on('pointerdown', () => this.select(spec.key));
 
-        const name = this.scene.add.text(0, -60, spec.name, {
+        // 专精图标
+        const icon = this.scene.add.text(0, -80, spec.icon, {
+            fontSize: '40px'
+        }).setOrigin(0.5);
+        container.add(icon);
+
+        const name = this.scene.add.text(0, -30, spec.name, {
             fontFamily: 'Courier New',
             fontSize: '18px',
             color: '#ffffff'
         }).setOrigin(0.5);
 
-        const level = this.scene.add.text(0, -20, `当前: Lv.${this.scene.runtime.specializations[spec.key]}`, {
+        const currentLevel = this.scene.runtime.specializations[spec.key];
+        const level = this.scene.add.text(0, 0, `当前: Lv.${currentLevel}`, {
             fontFamily: 'Courier New',
             fontSize: '14px',
             color: '#aaaaaa'
         }).setOrigin(0.5);
 
-        const desc = this.scene.add.text(0, 20, spec.description, {
+        const desc = this.scene.add.text(0, 40, spec.description, {
             fontFamily: 'Courier New',
             fontSize: '12px',
             color: '#00ff00',
@@ -1222,26 +1276,42 @@ class SpecializationUI {
             wordWrap: { width: 130 }
         }).setOrigin(0.5);
 
-        const bonus = this.scene.add.text(0, 70, spec.bonus, {
+        // 显示升级后效果
+        const nextBonus = this.getNextBonus(spec.key, currentLevel);
+        const bonusText = this.scene.add.text(0, 80, `升级后: ${nextBonus}`, {
             fontFamily: 'Courier New',
-            fontSize: '24px',
+            fontSize: '11px',
             color: '#ffff00'
         }).setOrigin(0.5);
 
-        container.add([bg, name, level, desc, bonus]);
+        container.add([bg, icon, name, level, desc, bonusText]);
         return container;
+    }
+
+    getNextBonus(key, currentLevel) {
+        const bonuses = {
+            'attack': `伤害 ${(currentLevel + 1) * 5}%`,
+            'crit': `暴击 ${(currentLevel + 1) * 2}%`,
+            'attackSpeed': `攻速 ${(currentLevel + 1) * 3}%`,
+            'hp': `HP +${(currentLevel + 1) * 10}`,
+            'armor': `减伤 ${(currentLevel + 1) * 2}%`,
+            'gold': `金币 ${(currentLevel + 1) * 10}%`,
+            'exp': `经验 ${(currentLevel + 1) * 5}%`,
+            'minion': `随从 ${(currentLevel + 1) * 10}%`
+        };
+        return bonuses[key] || '+1';
     }
 
     getRandomSpecs(count) {
         const allSpecs = [
-            { key: 'attack', name: '攻击专精', description: '+5% 伤害', bonus: '+5%' },
-            { key: 'crit', name: '暴击专精', description: '+2% 暴击率', bonus: '+2%' },
-            { key: 'attackSpeed', name: '攻速专精', description: '-10% 攻击间隔', bonus: '-10%' },
-            { key: 'hp', name: '生命专精', description: '+10 最大HP', bonus: '+10' },
-            { key: 'armor', name: '护甲专精', description: '+2% 减伤', bonus: '+2%' },
-            { key: 'gold', name: '金币专精', description: '+10% 金币', bonus: '+10%' },
-            { key: 'exp', name: '经验专精', description: '+5% 经验', bonus: '+5%' },
-            { key: 'minion', name: '随从专精', description: '+10% 随从效果', bonus: '+10%' }
+            { key: 'attack', name: '攻击专精', icon: '⚔️', description: '+5% 伤害' },
+            { key: 'crit', name: '暴击专精', icon: '💥', description: '+2% 暴击率' },
+            { key: 'attackSpeed', name: '攻速专精', icon: '⚡', description: '-3% 攻击间隔' },
+            { key: 'hp', name: '生命专精', icon: '❤️', description: '+10 最大HP' },
+            { key: 'armor', name: '护甲专精', icon: '🛡️', description: '+2% 减伤' },
+            { key: 'gold', name: '金币专精', icon: '💰', description: '+10% 金币' },
+            { key: 'exp', name: '经验专精', icon: '✨', description: '+5% 经验' },
+            { key: 'minion', name: '随从专精', icon: '👼', description: '+10% 随从效果' }
         ];
 
         return Phaser.Utils.Array.GetRandom(allSpecs, count);
