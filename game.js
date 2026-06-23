@@ -1288,7 +1288,7 @@ class SpecializationUI {
 
         const bg = this.scene.add.rectangle(0, 0, 150, 220, color);
         bg.setInteractive({ useHandCursor: true });
-        bg.on('pointerover', () => bg.setFillStyle(Phaser.Display.Color.IntegerToColor(color).lighten(20).color));
+        bg.on('pointerover', () => bg.setFillStyle(color + 0x202020));
         bg.on('pointerout', () => bg.setFillStyle(color));
         bg.on('pointerdown', () => this.select(spec.key));
 
@@ -1296,7 +1296,6 @@ class SpecializationUI {
         const icon = this.scene.add.text(0, -80, spec.icon, {
             fontSize: '40px'
         }).setOrigin(0.5);
-        container.add(icon);
 
         const name = this.scene.add.text(0, -30, spec.name, {
             fontFamily: 'Courier New',
@@ -1327,7 +1326,12 @@ class SpecializationUI {
             color: '#ffff00'
         }).setOrigin(0.5);
 
-        container.add([bg, icon, name, level, desc, bonusText]);
+        container.add(bg);
+        container.add(icon);
+        container.add(name);
+        container.add(level);
+        container.add(desc);
+        container.add(bonusText);
         return container;
     }
 
@@ -1487,7 +1491,7 @@ class RewardUI {
 
         const bg = this.scene.add.rectangle(0, 0, 150, 180, color);
         bg.setInteractive({ useHandCursor: true });
-        bg.on('pointerover', () => bg.setFillStyle(Phaser.Display.Color.IntegerToColor(color).lighten(20).color));
+        bg.on('pointerover', () => bg.setFillStyle(color + 0x202020));
         bg.on('pointerout', () => bg.setFillStyle(color));
         bg.on('pointerdown', () => this.select(`reward_${index}`));
 
@@ -1503,7 +1507,10 @@ class RewardUI {
             color: '#aaaaaa'
         }).setOrigin(0.5);
 
-        container.add([bg, icon, name, effect]);
+        container.add(bg);
+        container.add(icon);
+        container.add(name);
+        container.add(effect);
         return container;
     }
 
