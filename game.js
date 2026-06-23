@@ -231,6 +231,11 @@ class SoundManager {
 
         const sounds = {
             attack: () => this.playTone(200, 0.05, 'square'),
+            attack_shortsword: () => this.playTone(250, 0.04, 'square'),
+            attack_battleaxe: () => this.playTone(150, 0.08, 'sawtooth'),
+            attack_staff: () => this.playTone(400, 0.06, 'sine'),
+            attack_bow: () => this.playTone(600, 0.03, 'triangle'),
+            attack_wand: () => this.playTone(350, 0.05, 'sine'),
             hit: () => this.playTone(150, 0.08, 'sawtooth'),
             crit: () => this.playTone(400, 0.1, 'square'),
             kill: () => this.playTone(300, 0.1, 'sine'),
@@ -242,8 +247,11 @@ class SoundManager {
             damage: () => this.playTone(80, 0.15, 'sawtooth'),
             heal: () => this.playMelody([440, 554, 659], 0.1),
             pickup: () => this.playTone(800, 0.05, 'sine'),
+            pickup_gold: () => this.playTone(500, 0.08, 'sine'),
             unlock: () => this.playMelody([392, 523, 659, 784], 0.12),
-            gameOver: () => this.playMelody([392, 330, 262, 196], 0.2)
+            gameOver: () => this.playMelody([392, 330, 262, 196], 0.2),
+            minion_attack: () => this.playTone(180, 0.06, 'triangle'),
+            minion_heal: () => this.playTone(440, 0.1, 'sine')
         };
 
         if (sounds[type]) {
@@ -1915,7 +1923,9 @@ class GameScene extends Phaser.Scene {
         weapon.lastAttack = time;
 
         // 攻击音效
-        this.soundManager.play('attack');
+        const weaponType = this.selectedWeapon || 'shortsword';
+        const attackSound = `attack_${weaponType}`;
+        this.soundManager.play(attackSound);
 
         const damage = weapon.getDamage(this.runtime.weaponLevel, this.runtime.specializations);
 
@@ -2189,6 +2199,11 @@ class GameScene extends Phaser.Scene {
         const finalGold = Math.floor(gold * goldBonus);
         this.runtime.gold += finalGold;
         this.runtime.totalGoldEarned += finalGold;
+
+        // 金币拾取音效
+        if (finalGold > 0) {
+            this.soundManager.play('pickup_gold');
+        }
 
         // 经验加成
         const expBonus = 1 + this.runtime.specializations.exp * 0.05;
