@@ -1065,6 +1065,18 @@ class HUD {
 
         // 击杀数
         this.elements.killText = this.scene.add.text(20, GAME_HEIGHT - 30, '击杀: 0', { ...style, fontSize: '14px', color: '#888888' });
+
+        // 暂停按钮
+        this.elements.pauseBtn = this.scene.add.text(GAME_WIDTH - 30, GAME_HEIGHT - 30, '⏸️', {
+            fontSize: '24px'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        this.elements.pauseBtn.on('pointerdown', () => this.scene.togglePause());
+
+        // 音量按钮
+        this.elements.volumeBtn = this.scene.add.text(GAME_WIDTH - 70, GAME_HEIGHT - 30, '🔊', {
+            fontSize: '24px'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        this.elements.volumeBtn.on('pointerdown', () => this.scene.toggleVolume());
     }
 
     update(runtime) {
@@ -2130,7 +2142,64 @@ class GameScene extends Phaser.Scene {
     shutdown() {
         this.enemyManager.clear();
         this.bossManager.clear();
+        this.particleManager.clear();
         this.hud.destroy();
+    }
+
+    togglePause() {
+        this.paused = !this.paused;
+
+        // 更新暂停按钮图标
+        if (this.hud.elements.pauseBtn) {
+            this.hud.elements.pauseBtn.setText(this.paused ? '▶️' : '⏸️');
+        }
+
+        // 显示暂停提示
+        if (this.paused) {
+            this.showPauseOverlay();
+        } else {
+            this.hidePauseOverlay();
+        }
+
+        // 暂停音效
+        this.soundManager.play('click');
+    }
+
+    showPauseOverlay() {
+        this.pauseOverlay = this.add.container(0, 0);
+
+        const bg = this.add.rectangle(GAME_WIDTH/2, GAME_HEIGHT/2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7);
+        this.pauseOverlay.add(bg);
+
+        const text = this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2, '游戏暂停', {
+            fontFamily: 'Courier New',
+            fontSize: '36px',
+            color: '#ffffff'
+        }).setOrigin(0.5);
+        this.pauseOverlay.add(text);
+
+        const hint = this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 + 50, '点击暂停按钮继续', {
+            fontFamily: 'Courier New',
+            fontSize: '18px',
+            color: '#aaaaaa'
+        }).setOrigin(0.5);
+        this.pauseOverlay.add(hint);
+    }
+
+    hidePauseOverlay() {
+        if (this.pauseOverlay) {
+            this.pauseOverlay.destroy();
+            this.pauseOverlay = null;
+        }
+    }
+
+    toggleVolume() {
+        const enabled = this.soundManager.toggle();
+
+        // 更新音量按钮图标
+        if (this.hud.elements.volumeBtn) {
+            this.hud.elements.volumeBtn.setText(enabled ? '🔊' : '🔇');
+        }
     }
 }
 
