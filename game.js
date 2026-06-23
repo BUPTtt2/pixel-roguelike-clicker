@@ -861,6 +861,12 @@ class HUD {
     }
 
     showBossWarning() {
+        // Boss警告音效
+        if (this.scene.soundManager) {
+            this.scene.soundManager.play('bossWarning');
+        }
+
+        // 警告文字
         this.elements.bossText.setColor('#ff0000');
         this.scene.tweens.add({
             targets: this.elements.bossText,
@@ -870,6 +876,25 @@ class HUD {
             repeat: 2,
             onComplete: () => this.elements.bossText.setScale(1)
         });
+
+        // 屏幕闪烁效果
+        const overlay = this.scene.add.rectangle(
+            GAME_WIDTH/2, GAME_HEIGHT/2,
+            GAME_WIDTH, GAME_HEIGHT,
+            0xff0000, 0.3
+        ).setDepth(99);
+
+        this.scene.tweens.add({
+            targets: overlay,
+            alpha: 0,
+            duration: 1000,
+            onComplete: () => overlay.destroy()
+        });
+
+        // 相机震动
+        if (this.scene.cameras && this.scene.cameras.main) {
+            this.scene.cameras.main.shake(500, 0.01);
+        }
     }
 
     destroy() {
@@ -1232,6 +1257,15 @@ class MenuScene extends Phaser.Scene {
 
         this.weaponButtons = [];
 
+        // 武器图标
+        const weaponIcons = {
+            'shortsword': '⚔️',
+            'battleaxe': '🪓',
+            'staff': '🔮',
+            'bow': '🏹',
+            'wand': '🪄'
+        };
+
         weapons.forEach((type, i) => {
             const info = WeaponFactory.getInfo(type);
             const x = startX + i * spacing;
@@ -1244,15 +1278,20 @@ class MenuScene extends Phaser.Scene {
             bg.on('pointerout', () => bg.setFillStyle(type === this.selectedWeapon ? 0x6a6a8a : 0x4a4a6a));
             bg.on('pointerdown', () => this.selectWeapon(type));
 
-            this.add.text(x, y - 20, info.name, {
+            // 武器图标
+            this.add.text(x, y - 30, weaponIcons[type] || '⚔️', {
+                fontSize: '28px'
+            }).setOrigin(0.5);
+
+            this.add.text(x, y + 5, info.name, {
                 fontFamily: 'Courier New',
-                fontSize: '16px',
+                fontSize: '14px',
                 color: '#ffffff'
             }).setOrigin(0.5);
 
-            this.add.text(x, y + 15, info.desc, {
+            this.add.text(x, y + 25, info.desc, {
                 fontFamily: 'Courier New',
-                fontSize: '12px',
+                fontSize: '10px',
                 color: '#aaaaaa'
             }).setOrigin(0.5);
 
@@ -1494,6 +1533,7 @@ class GameScene extends Phaser.Scene {
         // 暴击音效
         if (isCrit) {
             this.soundManager.play('crit');
+            this.showCritShake();
         }
 
         const text = this.add.text(x, y - 30, (isCrit ? 'CRIT! ' : '') + Math.floor(damage), {
@@ -1642,6 +1682,9 @@ class GameScene extends Phaser.Scene {
         // 受伤音效
         this.soundManager.play('damage');
 
+        // 受伤闪红效果
+        this.showDamageFlash();
+
         // 显示伤害
         this.showTimeoutDamageEffect(actualDamage);
     }
@@ -1659,6 +1702,27 @@ class GameScene extends Phaser.Scene {
             duration: 300,
             onComplete: () => text.destroy()
         });
+    }
+
+    showDamageFlash() {
+        const flash = this.add.rectangle(
+            GAME_WIDTH/2, GAME_HEIGHT/2,
+            GAME_WIDTH, GAME_HEIGHT,
+            0xff0000, 0.2
+        ).setDepth(99);
+
+        this.tweens.add({
+            targets: flash,
+            alpha: 0,
+            duration: 200,
+            onComplete: () => flash.destroy()
+        });
+    }
+
+    showCritShake() {
+        if (this.cameras && this.cameras.main) {
+            this.cameras.main.shake(100, 0.005);
+        }
     }
 
     onBossDefeated() {
