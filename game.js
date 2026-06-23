@@ -500,6 +500,16 @@ class Enemy {
         this.sprite = null;
         this.hpBar = null;
         this.hpBarBg = null;
+        this.iconText = null;
+        this.alive = true;
+    }
+
+    reset(hp, damage, timeoutThreshold) {
+        this.hp = hp;
+        this.maxHp = hp;
+        this.damage = damage;
+        this.timeoutThreshold = timeoutThreshold;
+        this.spawnTime = this.scene.time.now;
         this.alive = true;
     }
 
@@ -599,7 +609,23 @@ class Enemy {
                 alpha: 0,
                 scale: 0,
                 duration: 200,
-                onComplete: () => this.destroy()
+                onComplete: () => {
+                    this.sprite.setAlpha(1);
+                    this.sprite.setScale(1);
+                    if (this.iconText) {
+                        this.iconText.setAlpha(1);
+                        this.iconText.setScale(1);
+                    }
+                    if (this.hpBar) {
+                        this.hpBar.setAlpha(1);
+                        this.hpBar.setScale(1);
+                    }
+                    if (this.hpBarBg) {
+                        this.hpBarBg.setAlpha(1);
+                        this.hpBarBg.setScale(1);
+                    }
+                    this.scene.enemyManager.returnToPool(this);
+                }
             });
         }
     }
@@ -738,9 +764,27 @@ class EnemyManager {
     constructor(scene) {
         this.scene = scene;
         this.enemies = [];
+        this.pool = [];
         this.spawnTimer = 0;
         this.spawnInterval = 2000;
         this.maxEnemies = 15;
+    }
+
+    getEnemyFromPool(type) {
+        for (let i = 0; i < this.pool.length; i++) {
+            if (!this.pool[i].alive && this.pool[i].type === type) {
+                return this.pool[i];
+            }
+        }
+        return null;
+    }
+
+    returnToPool(enemy) {
+        enemy.alive = false;
+        if (enemy.sprite) enemy.sprite.setVisible(false);
+        if (enemy.iconText) enemy.iconText.setVisible(false);
+        if (enemy.hpBar) enemy.hpBar.setVisible(false);
+        if (enemy.hpBarBg) enemy.hpBarBg.setVisible(false);
     }
 
     update(time, delta) {
@@ -780,9 +824,8 @@ class EnemyManager {
 
     spawnEnemy() {
         const types = ['slime', 'bat', 'skeleton', 'ghost', 'gargoyle'];
-        const weights = [40, 30, 15, 10, 5]; // 权重
+        const weights = [40, 30, 15, 10, 5];
 
-        // 根据时间调整权重
         const time = this.scene.runtime.survivalTime;
         if (time > 120) {
             weights = [30, 25, 20, 15, 10];
@@ -795,8 +838,19 @@ class EnemyManager {
         const stats = this.getEnemyStats(type);
         const pos = this.getRandomSpawnPosition();
 
-        const enemy = new Enemy(this.scene, type, ...stats);
-        enemy.spawn(pos.x, pos.y);
+        let enemy = this.getEnemyFromPool(type);
+        if (enemy) {
+            enemy.reset(...stats);
+            enemy.spawn(pos.x, pos.y);
+            enemy.sprite.setVisible(true);
+            enemy.iconText.setVisible(true);
+            enemy.hpBar.setVisible(true);
+            enemy.hpBarBg.setVisible(true);
+        } else {
+            enemy = new Enemy(this.scene, type, ...stats);
+            enemy.spawn(pos.x, pos.y);
+            this.pool.push(enemy);
+        }
         this.enemies.push(enemy);
     }
 
@@ -1248,7 +1302,7 @@ class SpecializationUI {
         this.visible = true;
 
         const specs = this.getRandomSpecs(3);
-        this.container = this.scene.add.container(0, 0);
+        this.container = this.scene.add.container(0, 0).setDepth(100);
 
         // 背景
         const bg = this.scene.add.rectangle(GAME_WIDTH/2, GAME_HEIGHT/2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.8);
@@ -1394,7 +1448,7 @@ class RewardUI {
         this.visible = true;
 
         this.rewards = this.generateRewards();
-        this.container = this.scene.add.container(0, 0);
+        this.container = this.scene.add.container(0, 0).setDepth(100);
 
         // 背景
         const bg = this.scene.add.rectangle(GAME_WIDTH/2, GAME_HEIGHT/2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.85);
