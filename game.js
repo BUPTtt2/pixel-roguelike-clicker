@@ -1423,7 +1423,12 @@ class SpecializationUI {
             { key: 'minion', name: '随从专精', icon: '👼', description: '+10% 随从效果' }
         ];
 
-        return Phaser.Utils.Array.GetRandom(allSpecs, count);
+        const result = [];
+        const shuffled = Phaser.Utils.Array.Shuffle(allSpecs);
+        for (let i = 0; i < count && i < shuffled.length; i++) {
+            result.push(shuffled[i]);
+        }
+        return result;
     }
 
     select(key) {
@@ -1535,7 +1540,12 @@ class RewardUI {
         }
 
         const selectedPool = pool[rarity] || pool.common;
-        return Phaser.Utils.Array.GetRandom(selectedPool, 3);
+        const result = [];
+        const shuffled = Phaser.Utils.Array.Shuffle(selectedPool);
+        for (let i = 0; i < 3 && i < shuffled.length; i++) {
+            result.push(shuffled[i]);
+        }
+        return result;
     }
 
     rollRarity() {
@@ -1850,8 +1860,22 @@ class GameScene extends Phaser.Scene {
         // 像素风格背景
         this.createPixelBackground();
 
-        // 玩家
-        this.player = this.add.rectangle(GAME_WIDTH/2, GAME_HEIGHT/2, 40, 40, 0x4488ff);
+        // 玩家（像素风格角色）
+        this.player = this.add.container(GAME_WIDTH/2, GAME_HEIGHT/2);
+        this.playerSprite = this.add.sprite(0, 0, 'player');
+        this.player.add(this.playerSprite);
+        this.playerIcon = this.add.text(0, 0, '🧙', { fontSize: '40px' }).setOrigin(0.5);
+        this.player.add(this.playerIcon);
+
+        // 玩家光晕效果
+        const glow = this.add.circle(0, 0, 30, 0x4488ff, 0.2);
+        this.player.add(glow);
+        this.tweens.add({
+            targets: glow,
+            alpha: [0.1, 0.3, 0.1],
+            duration: 2000,
+            repeat: -1
+        });
 
         // 管理器
         this.enemyManager = new EnemyManager(this);
@@ -2013,7 +2037,23 @@ class GameScene extends Phaser.Scene {
     }
 
     attackProjectile(x, y, range, damage) {
-        return this.attackSingle(x, y, range * 1.5, damage);
+        const enemies = this.enemyManager.getEnemiesInRange(x, y, range).slice(0, 2);
+
+        enemies.forEach(e => {
+            e.takeDamage(damage * 1.2);
+            this.showDamageNumber(e.sprite.x, e.sprite.y, damage * 1.2, false);
+        });
+
+        if (this.bossManager.currentBoss && this.bossManager.currentBoss.alive) {
+            const boss = this.bossManager.currentBoss;
+            const dist = Phaser.Math.Distance.Between(x, y, boss.sprite.x, boss.sprite.y);
+            if (dist <= range) {
+                boss.takeDamage(damage * 1.2);
+                this.showDamageNumber(boss.sprite.x, boss.sprite.y, damage * 1.2, false);
+            }
+        }
+
+        return enemies.length > 0;
     }
 
     attackBounce(x, y, range, damage) {
