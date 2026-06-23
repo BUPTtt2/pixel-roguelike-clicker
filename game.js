@@ -1836,24 +1836,97 @@ class GameScene extends Phaser.Scene {
 
     showAttackEffect(x, y, type, hit, isCrit) {
         const colors = {
-            single: 0xffff00,
-            aoe: 0xff6600,
-            pierce: 0x00ffff,
-            projectile: 0x00ff00,
-            bounce: 0xff00ff
+            single: 0xffff00,    // 黄色 - 短剑
+            aoe: 0xff6600,       // 橙色 - 战斧
+            pierce: 0x00ffff,    // 青色 - 法杖
+            projectile: 0x00ff00, // 绿色 - 弓箭
+            bounce: 0xff00ff     // 紫色 - 魔杖
         };
 
         const color = hit ? (isCrit ? 0xff0000 : colors[type]) : 0x888888;
         const size = isCrit ? 30 : 20;
 
-        const effect = this.add.circle(x, y, size, color, 0.6);
-        this.tweens.add({
-            targets: effect,
-            scale: 2,
-            alpha: 0,
-            duration: 200,
-            onComplete: () => effect.destroy()
-        });
+        // 根据武器类型显示不同形状特效
+        let effect;
+        switch (type) {
+            case 'single':
+                // 短剑：圆形闪光
+                effect = this.add.circle(x, y, size, color, 0.6);
+                this.tweens.add({
+                    targets: effect,
+                    scale: 2,
+                    alpha: 0,
+                    duration: 150,
+                    onComplete: () => effect.destroy()
+                });
+                break;
+
+            case 'aoe':
+                // 战斧：大范围圆形
+                effect = this.add.circle(x, y, size * 2, color, 0.4);
+                this.tweens.add({
+                    targets: effect,
+                    scale: 1.5,
+                    alpha: 0,
+                    duration: 300,
+                    onComplete: () => effect.destroy()
+                });
+                // 添加冲击波
+                const wave = this.add.circle(x, y, 10, color, 0.3);
+                this.tweens.add({
+                    targets: wave,
+                    scale: 8,
+                    alpha: 0,
+                    duration: 400,
+                    onComplete: () => wave.destroy()
+                });
+                break;
+
+            case 'pierce':
+                // 法杖：线形特效
+                effect = this.add.rectangle(x, y, 60, 8, color, 0.6);
+                this.tweens.add({
+                    targets: effect,
+                    scaleX: 0,
+                    alpha: 0,
+                    duration: 200,
+                    onComplete: () => effect.destroy()
+                });
+                break;
+
+            case 'projectile':
+                // 弓箭：箭形特效
+                effect = this.add.triangle(x, y, 0, -size, -size/2, size, size/2, size, color, 0.6);
+                this.tweens.add({
+                    targets: effect,
+                    alpha: 0,
+                    duration: 150,
+                    onComplete: () => effect.destroy()
+                });
+                break;
+
+            case 'bounce':
+                // 魔杖：星形特效
+                effect = this.add.star(x, y, 5, size/2, size, color, 0.6);
+                this.tweens.add({
+                    targets: effect,
+                    scale: 1.5,
+                    alpha: 0,
+                    duration: 200,
+                    onComplete: () => effect.destroy()
+                });
+                break;
+
+            default:
+                effect = this.add.circle(x, y, size, color, 0.6);
+                this.tweens.add({
+                    targets: effect,
+                    scale: 2,
+                    alpha: 0,
+                    duration: 200,
+                    onComplete: () => effect.destroy()
+                });
+        }
     }
 
     showDamageNumber(x, y, damage, isCrit) {
