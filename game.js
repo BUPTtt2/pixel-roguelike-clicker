@@ -9,6 +9,97 @@
 const GAME_WIDTH = 800;
 const GAME_HEIGHT = 600;
 
+// ==================== 音效系统 ====================
+
+/**
+ * SoundManager - 音效管理器
+ * 使用Web Audio API生成简单音效
+ */
+class SoundManager {
+    constructor(scene) {
+        this.scene = scene;
+        this.audioCtx = null;
+        this.enabled = true;
+        this.volume = 0.3;
+        this.init();
+    }
+
+    init() {
+        try {
+            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            console.log('Web Audio API not supported');
+            this.enabled = false;
+        }
+    }
+
+    resume() {
+        if (this.audioCtx && this.audioCtx.state === 'suspended') {
+            this.audioCtx.resume();
+        }
+    }
+
+    play(type) {
+        if (!this.enabled || !this.audioCtx) return;
+        this.resume();
+
+        const sounds = {
+            attack: () => this.playTone(200, 0.05, 'square'),
+            hit: () => this.playTone(150, 0.08, 'sawtooth'),
+            crit: () => this.playTone(400, 0.1, 'square'),
+            kill: () => this.playTone(300, 0.1, 'sine'),
+            levelUp: () => this.playMelody([262, 330, 392, 523], 0.1),
+            bossWarning: () => this.playTone(100, 0.3, 'square'),
+            bossDefeat: () => this.playMelody([523, 659, 784, 1047], 0.15),
+            select: () => this.playTone(500, 0.05, 'sine'),
+            click: () => this.playTone(600, 0.03, 'sine'),
+            damage: () => this.playTone(80, 0.15, 'sawtooth'),
+            heal: () => this.playMelody([440, 554, 659], 0.1),
+            pickup: () => this.playTone(800, 0.05, 'sine'),
+            unlock: () => this.playMelody([392, 523, 659, 784], 0.12),
+            gameOver: () => this.playMelody([392, 330, 262, 196], 0.2)
+        };
+
+        if (sounds[type]) {
+            sounds[type]();
+        }
+    }
+
+    playTone(frequency, duration, type = 'sine') {
+        const oscillator = this.audioCtx.createOscillator();
+        const gainNode = this.audioCtx.createGain();
+
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, this.audioCtx.currentTime);
+
+        gainNode.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + duration);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioCtx.destination);
+
+        oscillator.start();
+        oscillator.stop(this.audioCtx.currentTime + duration);
+    }
+
+    playMelody(frequencies, noteDuration) {
+        frequencies.forEach((freq, i) => {
+            setTimeout(() => {
+                this.playTone(freq, noteDuration, 'sine');
+            }, i * noteDuration * 1000);
+        });
+    }
+
+    setVolume(vol) {
+        this.volume = Math.max(0, Math.min(1, vol));
+    }
+
+    toggle() {
+        this.enabled = !this.enabled;
+        return this.enabled;
+    }
+}
+
 // ==================== 数据管理 ====================
 
 /**
@@ -1210,6 +1301,9 @@ class GameScene extends Phaser.Scene {
         this.enemyManager = new EnemyManager(this);
         this.bossManager = new BossManager(this);
 
+        // 音效
+        this.soundManager = new SoundManager(this);
+
         // UI
         this.hud = new HUD(this);
         this.specUI = new SpecializationUI(this);
@@ -1268,6 +1362,9 @@ class GameScene extends Phaser.Scene {
         if (time - weapon.lastAttack < adjustedSpeed) return;
 
         weapon.lastAttack = time;
+
+        // 攻击音效
+        this.soundManager.play('attack');
 
         const damage = weapon.getDamage(this.runtime.weaponLevel, this.runtime.specializations);
 
@@ -1394,6 +1491,11 @@ class GameScene extends Phaser.Scene {
     }
 
     showDamageNumber(x, y, damage, isCrit) {
+        // 暴击音效
+        if (isCrit) {
+            this.soundManager.play('crit');
+        }
+
         const text = this.add.text(x, y - 30, (isCrit ? 'CRIT! ' : '') + Math.floor(damage), {
             fontFamily: 'Courier New',
             fontSize: isCrit ? '24px' : '18px',
@@ -1412,6 +1514,9 @@ class GameScene extends Phaser.Scene {
     }
 
     showHealEffect() {
+        // 回血音效
+        this.soundManager.play('heal');
+
         const text = this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 - 50, '+HP', {
             fontFamily: 'Courier New',
             fontSize: '20px',
@@ -1440,6 +1545,9 @@ class GameScene extends Phaser.Scene {
 
     onEnemyKilled(enemy, gold, exp) {
         this.runtime.killCount++;
+
+        // 击杀音效
+        this.soundManager.play('kill');
 
         // 金币加成
         const goldBonus = 1 + this.runtime.specializations.gold * 0.1;
@@ -1496,6 +1604,9 @@ class GameScene extends Phaser.Scene {
     }
 
     showLevelUpEffect() {
+        // 升级音效
+        this.soundManager.play('levelUp');
+
         const text = this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2, 'LEVEL UP!', {
             fontFamily: 'Courier New',
             fontSize: '36px',
@@ -1528,6 +1639,9 @@ class GameScene extends Phaser.Scene {
         const actualDamage = Math.floor(damage * (1 - armorBonus));
         this.runtime.hp -= actualDamage;
 
+        // 受伤音效
+        this.soundManager.play('damage');
+
         // 显示伤害
         this.showTimeoutDamageEffect(actualDamage);
     }
@@ -1549,6 +1663,10 @@ class GameScene extends Phaser.Scene {
 
     onBossDefeated() {
         this.runtime.bossCount++;
+
+        // Boss击败音效
+        this.soundManager.play('bossDefeat');
+
         this.bossManager.onBossDefeated();
 
         // 检查随从解锁
@@ -1578,6 +1696,9 @@ class GameScene extends Phaser.Scene {
     }
 
     showUnlockMessage(msg) {
+        // 解锁音效
+        this.soundManager.play('unlock');
+
         const text = this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2 - 100, msg, {
             fontFamily: 'Courier New',
             fontSize: '28px',
@@ -1654,6 +1775,9 @@ class GameScene extends Phaser.Scene {
     }
 
     gameOver() {
+        // 游戏结束音效
+        this.soundManager.play('gameOver');
+
         // 保存数据
         const data = GameData.load();
         data.totalRuns++;
