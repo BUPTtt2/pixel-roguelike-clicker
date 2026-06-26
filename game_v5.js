@@ -3537,9 +3537,9 @@ class GameScene extends Phaser.Scene {
             } else {
                 displayAngle = angle;
             }
-            displayScale = 1 + (1 - anim) * 0.15 + anim * 0.1;
-            this.weaponContainer.x = 28 + Math.cos(angle) * (1 - anim) * 8;
-            this.weaponContainer.y = 2 + Math.sin(angle) * (1 - anim) * 5;
+            displayScale = 1 + (1 - anim) * 0.08;
+            this.weaponContainer.x = 28 + Math.cos(angle) * (1 - anim) * 3;
+            this.weaponContainer.y = 2 + Math.sin(angle) * (1 - anim) * 2;
         } else {
             displayScale = 1 + anim * 0.15;
         }
@@ -3885,32 +3885,8 @@ class GameScene extends Phaser.Scene {
         const needTable = [30, 50, 80, 120, 180, 260, 380, 550, 800];
         const need = needTable[cur - 1] || 999;
         if (this.weaponExp[weaponType] >= need) {
-            if (cur === 3) {
-                const e = this.runtime.elements;
-                if (!e || e.shard < 3 || e.dust < 1) {
-                    this.showCenterText(`需要 3元素碎片+1奥术尘埃 晋升！`, '#ff8844', 1500);
-                    return;
-                }
-            }
-            if (cur === 6) {
-                const e = this.runtime.elements;
-                if (!e || e.crystal < 2 || e.shard < 5) {
-                    this.showCenterText(`需要 2元素结晶+5元素碎片 晋升！`, '#ff8844', 1500);
-                    return;
-                }
-            }
             this.weaponExp[weaponType] -= need;
             this.weaponLevels[weaponType] = Math.min(10, cur + 1);
-            if (cur === 3) {
-                this.runtime.weaponPromotions[weaponType] = 1;
-                this.runtime.elements.shard -= 3;
-                this.runtime.elements.dust -= 1;
-            }
-            if (cur === 6) {
-                this.runtime.weaponPromotions[weaponType] = 2;
-                this.runtime.elements.crystal -= 2;
-                this.runtime.elements.shard -= 5;
-            }
             this.showCenterText(`⚔ ${WeaponFactory.info(weaponType).name} Lv.${this.weaponLevels[weaponType]}!`,
                 WeaponFactory.info(weaponType).color, 1000);
             this.particles.explosion(GW / 2, GH / 2, 40, WeaponFactory.info(weaponType).color);
@@ -4358,6 +4334,12 @@ class GameScene extends Phaser.Scene {
             promoDesc = canPromote ? `晋升${WeaponFactory.info(wt).name}→终极` : '需2结晶+5碎片';
         }
 
+        const allWTypes = ['sword', 'axe', 'staff', 'bow', 'wand'];
+        const lockedWeapons = allWTypes.filter(w => !this.saveData.unlockedWeapons.includes(w));
+        const freeItem = lockedWeapons.length > 0
+            ? { id: 'unlock_weapon', name: '解锁新武器', icon: '🔑', desc: `解锁${WeaponFactory.info(lockedWeapons[0]).name}`, cost: 0, color: 0x44ff88, enabled: true }
+            : { id: 'free', name: '免费奖励', icon: '🎁', desc: '武器经验+5/生命恢复/新随从', cost: 0, color: 0x44ff88, enabled: true };
+
         const items = [
             { id: 'promote', name: '武器晋升', icon: '⚔', desc: promoDesc, cost: 0, color: 0xff4466, enabled: canPromote },
             { id: 'crystal', name: '元素结晶', icon: '🔶', desc: '购买1个元素结晶', cost: 300, color: 0xff8866, enabled: this.runtime.gold >= 300 },
@@ -4367,7 +4349,7 @@ class GameScene extends Phaser.Scene {
             { id: 'rage', name: '狂暴药剂', icon: '🔥', desc: '6秒狂暴模式', cost: 150, color: 0xff4400, enabled: this.runtime.gold >= 150 },
             { id: 'atk_gem', name: '攻击宝石', icon: '💎', desc: '永久攻击+5%', cost: 400, color: 0xaa88ff, enabled: this.runtime.gold >= 400 },
             { id: 'spec', name: '随机专精', icon: '📜', desc: '随机获得2项专精', cost: 500, color: 0xcc44ff, enabled: this.runtime.gold >= 500 },
-            { id: 'free', name: '免费奖励', icon: '🎁', desc: '武器经验+5/生命恢复/新随从', cost: 0, color: 0x44ff88, enabled: true }
+            freeItem
         ];
 
         const cardW = 150, cardH = 110;
@@ -4408,7 +4390,7 @@ class GameScene extends Phaser.Scene {
                     cardBg.setFillStyle(0x111122, 0.95);
                 });
                 cardBg.on('pointerdown', () => {
-                    const isFree = it.id === 'free';
+                    const isFree = it.id === 'free' || it.id === 'unlock_weapon';
                     this.executeBossShopPurchase(it.id, it.cost);
                     uiElements.forEach(e => e.destroy());
                     if (isFree) {
@@ -4514,6 +4496,19 @@ class GameScene extends Phaser.Scene {
                         this.runtime.updateMaxHp();
                         this.showCenterText('攻击专精 +2!', '#ffaa00');
                     }
+                }
+                break;
+            }
+            case 'unlock_weapon': {
+                const allW = ['sword', 'axe', 'staff', 'bow', 'wand'];
+                const locked = allW.filter(w => !this.saveData.unlockedWeapons.includes(w));
+                if (locked.length > 0) {
+                    const newW = locked[0];
+                    this.saveData.unlockedWeapons.push(newW);
+                    this.switchWeapon(newW);
+                    this.showCenterText(`解锁 ${WeaponFactory.info(newW).name}!`, '#44ff88', 2000);
+                    this.particles.explosion(GW / 2, GH / 2, 50, WeaponFactory.info(newW).color);
+                    this.audio.play('levelup');
                 }
                 break;
             }
