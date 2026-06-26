@@ -15,3 +15,7 @@ build/
 
 # Logs
 *.log
+
+# Misc temp files
+erver 8000
+*.tmp
