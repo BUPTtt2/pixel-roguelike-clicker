@@ -2023,7 +2023,7 @@ class PickupItem {
                     if (bd < 150) b.takeDamage(dmg, true);
                 });
                 this.scene.particles.explosion(this.screenX(), this.screenY(), 150, 0xff4400);
-                this.scene.cameras.main.shake(300, 0.008);
+                this.scene.cameras.main.flash(150, 0xff4400, 0.5);
                 break;
         }
         SaveData.save(sd);
@@ -2151,21 +2151,34 @@ class Boss {
         this.attackCooldown = 0;
         this.createSprite();
         this.scene.audio.play('boss');
-        // 炫酷登场特效
-        this.scene.cameras.main.shake(800, 0.015);
-        this.scene.cameras.main.flash(600, cfg.glowColor, 0.5);
+        // 炫酷登场特效（无震动）
+        this.scene.cameras.main.flash(500, cfg.glowColor, 0.4);
         const sx = this.worldX - this.scene.playerWorldX + GW / 2;
         const sy = this.worldY - this.scene.playerWorldY + GH / 2;
-        this.scene.particles.explosion(sx, sy, 150, cfg.glowColor);
-        this.scene.particles.explosion(sx, sy, 100, cfg.color);
+        this.scene.particles.explosion(sx, sy, 180, cfg.glowColor);
+        this.scene.particles.explosion(sx, sy, 120, cfg.color);
+        // 降临光柱
+        for (let i = 0; i < 12; i++) {
+            const spark = this.scene.add.star(sx, sy, 4, 4, 12, cfg.glowColor);
+            spark.setDepth(280);
+            const ang = (i / 12) * Math.PI * 2;
+            this.scene.tweens.add({
+                targets: spark,
+                x: sx + Math.cos(ang) * 180,
+                y: sy + Math.sin(ang) * 180,
+                alpha: 0, scale: { from: 1, to: 0.2 },
+                duration: 800, ease: 'Cubic.easeOut',
+                onComplete: () => spark.destroy()
+            });
+        }
         // 登场文字
         const entrance = this.scene.add.text(sx, sy - 60, cfg.icon + ' ' + cfg.name, {
-            fontSize: '20px', fontFamily: 'Courier New', color: '#' + cfg.glowColor.toString(16).padStart(6, '0'),
+            fontSize: '22px', fontFamily: 'Courier New', color: '#' + cfg.glowColor.toString(16).padStart(6, '0'),
             stroke: '#000', strokeThickness: 3, fontWeight: 'bold'
         }).setOrigin(0.5).setDepth(300);
         this.scene.tweens.add({
-            targets: entrance, y: sy - 100, alpha: 0, scale: { from: 0.5, to: 1.5 },
-            duration: 1200, ease: 'Cubic.easeOut', onComplete: () => entrance.destroy()
+            targets: entrance, y: sy - 110, alpha: 0, scale: { from: 0.5, to: 1.6 },
+            duration: 1500, ease: 'Cubic.easeOut', onComplete: () => entrance.destroy()
         });
         return this;
     }
@@ -2451,7 +2464,7 @@ class Boss {
                 this.scene.time.delayedCall(500, () => { if (this.alive) this[second](); });
                 this.scene.time.delayedCall(1100, () => { if (this.alive) this[third](); });
                 this.scene.showCenterText('☠ 地狱三连击！', '#ff0044', 1400);
-                this.scene.cameras.main.shake(300, 0.012);
+                this.scene.cameras.main.flash(200, 0xff0044, 0.5);
             }
         }
     }
@@ -2738,7 +2751,7 @@ class Boss {
                     this.damage * 0.8, 'meteor', { speed: 700, color: 0xff00ff, size: 14 }));
             }, i * 80);
         }
-        this.scene.cameras.main.shake(2000, 0.015);
+        this.scene.cameras.main.flash(500, 0xff00ff, 0.6);
         this.scene.showCenterText('湮灭！', '#ff0000');
     }
     checkPlayerCollision() {
@@ -2805,7 +2818,6 @@ class Boss {
                 }
                 // 破段特效
                 this.scene.cameras.main.flash(300, 255, 100, 50);
-                this.scene.cameras.main.shake(400, 0.012);
                 this.scene.particles.explosion(this.screenX(), this.screenY(), 180, this.config.glowColor);
                 this.showPhaseText(`血条 ${this.currentBar}/${this.totalBars}`, '#ffaa00');
                 // 破段时召唤小怪（阶段2+）
@@ -3297,7 +3309,7 @@ class BossManager {
                 this.showBossIntro(cfg, () => { this.spawnBoss(); });
             }
         });
-        this.scene.cameras.main.shake(3000, 0.008);
+        this.scene.cameras.main.flash(500, 0xff2244, 0.5);
     }
     showBossIntro(bossConfig, callback) {
         // 屏幕渐暗
@@ -3351,6 +3363,14 @@ class BossManager {
     }
     spawnBoss() {
         this.warningActive = false;
+        // 清理旧 BOSS
+        if (this.boss && this.boss.container) {
+            this.boss.container.destroy();
+        }
+        if (this.phantoms) {
+            this.phantoms.forEach(p => { if (p.container) p.container.destroy(); });
+            this.phantoms = [];
+        }
         const cfg = BossConfigs[this.currentBossIndex % BossConfigs.length];
         const level = Math.floor(this.currentBossIndex / BossConfigs.length) + 1;
         const baseDiff = 1 + this.scene.runtime.surviveTime / 60 * 0.4;
@@ -3444,13 +3464,15 @@ class GameScene extends Phaser.Scene {
         };
         const ctx = (id) => {
             const tex = this.textures.createCanvas('boss_' + id, SIZE, SIZE);
-            return tex.getContext();
+            const c = tex.getContext();
+            // 透明背景：清空画布
+            c.clearRect(0, 0, SIZE, SIZE);
+            return c;
         };
         const hex = (c) => '#' + c.toString(16).padStart(6, '0');
         const rect = (c, x, y, w, h, color) => { c.fillStyle = hex(color); c.fillRect(x, y, w, h); };
         const circle = (c, x, y, r, color) => { c.fillStyle = hex(color); c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); };
         const px = (c, x, y, color) => rect(c, x, y, 1, 1, color); // 单像素
-        const fillAll = (c, color) => { c.fillStyle = hex(color); c.fillRect(0, 0, SIZE, SIZE); };
 
         // 通用：以像素方块绘制（每个"像素"=3x3 实际像素，32x32 网格）
         const CELL = 3;
@@ -4267,7 +4289,7 @@ class GameScene extends Phaser.Scene {
         const sy = qt.worldY - this.playerWorldY + GH / 2;
         this.particles.explosion(sx, sy, 36, 0x44ff88);
         this.cameras.main.flash(250, 100, 255, 150);
-        this.cameras.main.shake(180, 0.006);
+        this.cameras.main.flash(250, 100, 255, 150);
         if (qt.obj) {
             this.tweens.add({
                 targets: qt.obj, alpha: 0, scale: 2.2, duration: 500, ease: 'Cubic.easeOut',
@@ -6673,7 +6695,7 @@ class GameScene extends Phaser.Scene {
 
         s.use(this.time.now - this.startTime);
         this.audio.play('skill');
-        this.cameras.main.shake(250, 0.012);
+        this.cameras.main.flash(200, 0xffffff, 0.4);
 
         const w = this.runtime.weapon;
         const baseDmg = w.getSkillDamage(this.weaponLevels[this.runtime.weaponType] || 1, this.runtime.spec);
@@ -6998,7 +7020,7 @@ class GameScene extends Phaser.Scene {
         this.particles.levelUp();
         this.audio.play('levelup');
         this.runtime.updateMaxHp();
-        this.cameras.main.shake(400, 0.006);
+        this.cameras.main.flash(300, 0xffd700, 0.4);
         this.showLevelUpChoice();
     }
 
@@ -7143,8 +7165,7 @@ class GameScene extends Phaser.Scene {
         this.bossManager.boss = null;
         this.bossDamageBuff = false;
 
-        // 炫酷 BOSS 死亡特效
-        this.cameras.main.shake(1200, 0.02);
+        // 炫酷 BOSS 死亡特效（无震动）
         this.cameras.main.flash(800, 0xffd700, 0.6);
         const cx = GW / 2, cy = GH / 2;
         // 多层爆炸
