@@ -538,7 +538,7 @@ const SaveData = {
 // ==================== 粒子系统 ====================
 class ParticleSystem {
     constructor(scene) { this.scene = scene; }
-    hit(x, y, color = 0xff4444, count = 12, speed = 4) {
+    hit(x, y, color = 0xff4444, count = 20, speed = 5) {
         for (let i = 0; i < count; i++) {
             const angle = (i / count) * Math.PI * 2 + Math.random() * 0.6;
             const spd = speed + Math.random() * speed * 1.5;
@@ -1561,9 +1561,9 @@ class Enemy {
         if (!this._isClone && !this._isPhantom) {
             this.dropLoot();
             this.dropRareLoot();
-            // v5 贪婪加点：每级 +0.5% 概率额外掉落玄铁（大幅降低）
+            // v5 贪婪加点：每级 +0.2% 概率额外掉落玄铁（大幅降低）
             const greedLv = this.scene.runtime._greedLv || 0;
-            if (greedLv > 0 && Math.random() < 0.005 * greedLv) {
+            if (greedLv > 0 && Math.random() < 0.002 * greedLv) {
                 this.scene.items.push(new PickupItem(this.scene, 'darkIron', this.worldX, this.worldY));
             }
         }
@@ -1614,8 +1614,8 @@ class Enemy {
         this.scene.items.push(new PickupItem(this.scene, type, this.worldX, this.worldY));
     }
     dropRareLoot() {
-        // v5：稀有掉落概率降低，加入玄铁和影石
-        if (Math.random() > 0.008) return;  // 原0.01 → 0.008
+        // 大幅降低稀有掉落概率，避免满地玄铁
+        if (Math.random() > 0.002) return;  // 0.8% → 0.2%
         const r = Math.random();
         let type;
         if (r < 0.35) type = 'gem_red';
@@ -1720,10 +1720,10 @@ class EnemyManager {
         let type = pool[Math.floor(Math.random() * pool.length)];
         if (Math.random() < 0.015) type = 'chest';
         if (Math.random() < 0.008) type = 'rainbow';
-        // v5：远程小怪极小概率出现（archer 3%, mage 2%）
+        // v5：远程小怪出现（archer 8%, mage 5%）
         const remoteRoll = Math.random();
-        if (remoteRoll < 0.02) type = 'mage';
-        else if (remoteRoll < 0.05) type = 'archer';
+        if (remoteRoll < 0.05) type = 'mage';
+        else if (remoteRoll < 0.13) type = 'archer';
 
         const side = Math.floor(Math.random() * 4);
         let x, y;
@@ -2148,7 +2148,7 @@ class Boss {
         this.alive = false; this.worldX = 0; this.worldY = 0;
         this.hp = 0; this.maxHp = 0;
         this.damage = 0; this.speed = 0; this.currentSpeed = 0;
-        this.accelRate = 0.015; this.hitRadius = 55;
+        this.accelRate = 0.12; this.hitRadius = 55;
         this.container = null; this.hpBar = null; this.hpBarBg = null;
         this.nameText = null; this.lastSpecial = 0;
         this.specialCooldown = 1.6; this.attackCooldown = 0;
@@ -2171,8 +2171,8 @@ class Boss {
         if (cfg.id === 'sg') bars = diffName === '地狱' ? 15 : Math.max(8, bars + 3);
         this.totalBars = bars;
         this.currentBar = 1;
-        // 每条血的血量
-        const perBarHp = Math.floor(cfg.hp * difficulty * 1.6 * (1 + (level - 1) * 0.5));
+        // 每条血的血量（大幅加强 BOSS 生存力，让玩家不能秒 BOSS）
+        const perBarHp = Math.floor(cfg.hp * difficulty * 2.5 * (1 + (level - 1) * 0.6));
         this.perBarHp = perBarHp;
         this.hp = perBarHp;
         this.maxHp = perBarHp;
@@ -2579,17 +2579,17 @@ class Boss {
     laserBeam() {
         const a = Math.atan2(this.scene.playerWorldY - this.worldY,
             this.scene.playerWorldX - this.worldX);
-        // 激光预告：细线警告（不再刺眼）
+        // 激光预告：极细线警告（不再刺眼）
         const telegraphEndX = this.screenX() + Math.cos(a) * 600;
         const telegraphEndY = this.screenY() + Math.sin(a) * 600;
         const midX = (this.screenX() + telegraphEndX) / 2;
         const midY = (this.screenY() + telegraphEndY) / 2;
         const lineLen = Phaser.Math.Distance.Between(this.screenX(), this.screenY(), telegraphEndX, telegraphEndY);
-        const lineShape = this.scene.add.rectangle(midX, midY, lineLen, 4, 0xff4466, 0.15);
+        const lineShape = this.scene.add.rectangle(midX, midY, lineLen, 2, 0xff4466, 0.08);
         lineShape.rotation = a;
-        lineShape.setStrokeStyle(1, 0xff4466, 0.4).setDepth(150);
+        lineShape.setStrokeStyle(1, 0xff4466, 0.3).setDepth(150);
         this.scene.tweens.add({
-            targets: lineShape, alpha: { from: 0.15, to: 0.3 },
+            targets: lineShape, alpha: { from: 0.08, to: 0.2 },
             duration: 450, yoyo: true, repeat: 1
         });
         this.scene.time.delayedCall(900, () => {
@@ -3384,8 +3384,8 @@ class BossManager {
                 const quote = this.scene.add.text(GW / 2, GH / 2 + 40, quotes[bossConfig.id] || '...', {
                     fontSize: '16px', fill: '#ffaa44', fontStyle: 'italic'
                 }).setOrigin(0.5).setDepth(2001);
-                // 3秒后渐亮，开始战斗
-                this.scene.time.delayedCall(3000, () => {
+                // 1.5秒后渐亮，开始战斗（缩短 intro，让 BOSS 更快出招）
+                this.scene.time.delayedCall(1500, () => {
                     this.scene.tweens.add({
                         targets: [fade, title, desc, quote],
                         alpha: 0,
@@ -3405,9 +3405,10 @@ class BossManager {
     }
     spawnBoss() {
         this.warningActive = false;
-        // 清理旧 BOSS
-        if (this.boss && this.boss.container) {
-            this.boss.container.destroy();
+        // 彻底清理旧 BOSS：设 null 防止残留
+        if (this.boss) {
+            if (this.boss.container) this.boss.container.destroy();
+            this.boss = null;
         }
         if (this.phantoms) {
             this.phantoms.forEach(p => { if (p.container) p.container.destroy(); });
