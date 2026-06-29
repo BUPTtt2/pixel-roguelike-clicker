@@ -2122,8 +2122,11 @@ class Boss {
     spawn(difficulty = 1, level = 1) {
         const cfg = this.config;
         this.bossLevel = level;
-        this.worldX = this.scene.playerWorldX;
-        this.worldY = this.scene.playerWorldY - 250;
+        // BOSS 刷在玩家前方 500-700 像素处，避免直接贴在玩家身上
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 500 + Math.random() * 200;
+        this.worldX = this.scene.playerWorldX + Math.cos(angle) * dist;
+        this.worldY = this.scene.playerWorldY + Math.sin(angle) * dist;
         // v5：BOSS 多血条系统（根据难度和BOSS类型决定血条数）
         const diffName = this.scene.runtime?.difficultyName || '普通';
         const baseBars = { '简单': 3, '普通': 5, '困难': 8, '地狱': 12 };
@@ -2148,6 +2151,22 @@ class Boss {
         this.attackCooldown = 0;
         this.createSprite();
         this.scene.audio.play('boss');
+        // 炫酷登场特效
+        this.scene.cameras.main.shake(800, 0.015);
+        this.scene.cameras.main.flash(600, cfg.glowColor, 0.5);
+        const sx = this.worldX - this.scene.playerWorldX + GW / 2;
+        const sy = this.worldY - this.scene.playerWorldY + GH / 2;
+        this.scene.particles.explosion(sx, sy, 150, cfg.glowColor);
+        this.scene.particles.explosion(sx, sy, 100, cfg.color);
+        // 登场文字
+        const entrance = this.scene.add.text(sx, sy - 60, cfg.icon + ' ' + cfg.name, {
+            fontSize: '20px', fontFamily: 'Courier New', color: '#' + cfg.glowColor.toString(16).padStart(6, '0'),
+            stroke: '#000', strokeThickness: 3, fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(300);
+        this.scene.tweens.add({
+            targets: entrance, y: sy - 100, alpha: 0, scale: { from: 0.5, to: 1.5 },
+            duration: 1200, ease: 'Cubic.easeOut', onComplete: () => entrance.destroy()
+        });
         return this;
     }
     createSprite() {
@@ -3467,7 +3486,6 @@ class GameScene extends Phaser.Scene {
         // ===== gk 哥布林王：绿色身体 + 金王冠 + 獠牙 =====
         {
             const c = ctx('gk'); const p = PALETTES.gk;
-            fillAll(c, 0x000000);
             // 王冠（金色，5个尖）
             for (let i=0; i<5; i++) { const cx = 10 + i*3; pxg(c, cx, 6, p.accent); pxg(c, cx, 7, p.accent); pxg(c, cx, 8, p.accent); }
             for (let x=10; x<=22; x++) pxg(c, x, 9, p.accent);
@@ -3493,7 +3511,6 @@ class GameScene extends Phaser.Scene {
         // ===== sl 骷髅领主：白骷髅头 + 红眼窝 + 骨十字 =====
         {
             const c = ctx('sl'); const p = PALETTES.sl;
-            fillAll(c, 0x000000);
             // 头骨
             discG(c, 16, 14, 7, p.body);
             // 眼窝（黑色 + 红光）
@@ -3516,7 +3533,6 @@ class GameScene extends Phaser.Scene {
         // ===== sd 暗影龙：紫色龙首 + 张开的双翼 =====
         {
             const c = ctx('sd'); const p = PALETTES.sd;
-            fillAll(c, 0x000000);
             // 左翼（三角形）
             for (let y=10; y<22; y++) {
                 const len = Math.floor((y - 10) * 0.8);
@@ -3549,7 +3565,6 @@ class GameScene extends Phaser.Scene {
         // ===== ab 深渊魔王：红皮肤 + 黑角 + 健壮身体 =====
         {
             const c = ctx('ab'); const p = PALETTES.ab;
-            fillAll(c, 0x000000);
             // 左角（黑色，弯曲）
             lineG(c, 12, 10, 8, 4, p.accent); lineG(c, 11, 10, 7, 5, p.accent);
             // 右角
@@ -3579,7 +3594,6 @@ class GameScene extends Phaser.Scene {
         // ===== ts 时空守护者：蓝色钟环 + 指针 + 中心眼 =====
         {
             const c = ctx('ts'); const p = PALETTES.ts;
-            fillAll(c, 0x000000);
             // 外环
             ringG(c, 16, 16, 12, p.body);
             ringG(c, 16, 16, 11, p.light);
@@ -3613,7 +3627,6 @@ class GameScene extends Phaser.Scene {
         // ===== el 元素领主：四象限四色（火/冰/雷/地）+ 中心宝石 =====
         {
             const c = ctx('el'); const p = PALETTES.el;
-            fillAll(c, 0x000000);
             // 四个象限颜色
             const FIRE = 0xff4400, ICE = 0x44aaff, LIGHTNING = 0xffee00, EARTH = 0x88ff44;
             // 左上 火
@@ -3649,7 +3662,6 @@ class GameScene extends Phaser.Scene {
         // ===== vp 虚空先知：紫色兜帽 + 独眼 =====
         {
             const c = ctx('vp'); const p = PALETTES.vp;
-            fillAll(c, 0x000000);
             // 兜帽外轮廓（深紫三角）
             for (let y=8; y<26; y++) {
                 const halfW = Math.max(1, Math.floor((y - 8) * 0.6));
@@ -3682,7 +3694,6 @@ class GameScene extends Phaser.Scene {
         // ===== sg 暗影神：黑团 + 多眼 + 红光环 =====
         {
             const c = ctx('sg'); const p = PALETTES.sg;
-            fillAll(c, 0x000000);
             // 外层红光环（环）
             ringG(c, 16, 16, 14, 0x440000);
             ringG(c, 16, 16, 13, 0x660000);
@@ -5010,7 +5021,7 @@ class GameScene extends Phaser.Scene {
     loadDemoSave() {
         const demo = {
             bestTime: 600, bestLevel: 8, totalKills: 2000, totalGold: 50000, totalRuns: 30,
-            unlockedMinions: [], achievements: ['first_boss', 'weapon_master', 'elite_slayer'], titles: ['暗影猎手'],
+            unlockedMinions: ['light'], achievements: ['first_boss', 'weapon_master', 'elite_slayer'], titles: ['暗影猎手'],
             unlockedWeapons: ['sword', 'axe', 'bow', 'staff', 'wand'],
             secondaryWeapon: null,
             weaponSkills: {},
@@ -5437,6 +5448,8 @@ class GameScene extends Phaser.Scene {
         };
         sd.weaponLevels = sd.weaponLevels || {};
         const smithyLv = (sd.weaponLevels[weaponType] || 0);
+        // 将存档中的武器等级同步到 HUD 显示
+        this.weaponLevels[weaponType] = Math.max(1, smithyLv);
         // v5：10 分支等级
         const u = sd.upgrades;
         const bloodLv = u.bloodlust || 0, berserkLv = u.berserk || 0;
@@ -5474,6 +5487,13 @@ class GameScene extends Phaser.Scene {
 
         this.createWeaponVisual(weaponType);
         this.skillIcon.setText(this.runtime.skill.icon);
+        // 更新 HUD 武器等级显示为实际等级
+        const wInfo = WeaponFactory.info(weaponType);
+        const wLvl = this.weaponLevels[weaponType] || 1;
+        const wForm = sd.weaponForms ? (sd.weaponForms[weaponType] || 0) : 0;
+        const formMarks = ['', ' Ⅰ', ' Ⅱ', ' Ⅲ', ' Ⅳ'];
+        const stars = smithyLv >= 7 ? ' ★★' : smithyLv >= 4 ? ' ★' : '';
+        this.weaponText.setText(`${wInfo.icon} ${wInfo.name} Lv.${wLvl}${stars}${formMarks[wForm] || ''}`);
 
         this.playerWorldX = 0;
         this.playerWorldY = 0;
@@ -7122,6 +7142,39 @@ class GameScene extends Phaser.Scene {
         this.bossManager.onBossDefeated((this.time.now - this.startTime) / 1000);
         this.bossManager.boss = null;
         this.bossDamageBuff = false;
+
+        // 炫酷 BOSS 死亡特效
+        this.cameras.main.shake(1200, 0.02);
+        this.cameras.main.flash(800, 0xffd700, 0.6);
+        const cx = GW / 2, cy = GH / 2;
+        // 多层爆炸
+        this.particles.explosion(cx, cy, 200, 0xffd700);
+        this.particles.explosion(cx, cy, 150, 0xff6600);
+        this.particles.explosion(cx, cy, 100, 0xffffff);
+        // 金色星星雨
+        for (let i = 0; i < 40; i++) {
+            const angle = (i / 40) * Math.PI * 2;
+            const dist = 100 + Math.random() * 200;
+            const star = this.add.star(cx + Math.cos(angle) * 50, cy + Math.sin(angle) * 50, 5, 4, 8, 0xffd700);
+            star.setDepth(300);
+            this.tweens.add({
+                targets: star,
+                x: cx + Math.cos(angle) * dist,
+                y: cy + Math.sin(angle) * dist,
+                alpha: 0, scale: { from: 1, to: 0.2 },
+                duration: 800 + Math.random() * 400, ease: 'Cubic.easeOut',
+                onComplete: () => star.destroy()
+            });
+        }
+        // 胜利文字
+        const victoryText = this.add.text(cx, cy - 50, '🏆 BOSS 击败！ 🏆', {
+            fontSize: '48px', fontFamily: 'Courier New', color: '#ffd700',
+            stroke: '#000', strokeThickness: 6, fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(350);
+        this.tweens.add({
+            targets: victoryText, y: cy - 120, alpha: 0, scale: { from: 0.5, to: 1.5 },
+            duration: 2000, ease: 'Cubic.easeOut', onComplete: () => victoryText.destroy()
+        });
 
         const bg = this.add.rectangle(0, 0, GW, GH, 0x000000, 0.85).setOrigin(0).setDepth(400);
         const uiElements = [bg];
