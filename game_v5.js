@@ -1557,12 +1557,15 @@ class Enemy {
         this.scene.particles.goldEffect(this.screenX(), this.screenY(), Math.max(1, cfg.gold));
         this.scene.particles.expEffect(this.screenX(), this.screenY(), Math.max(1, Math.ceil(cfg.exp / 6)));
         this.scene.particles.hit(this.screenX(), this.screenY(), cfg.color, 10, 3);
-        this.dropLoot();
-        this.dropRareLoot();
-        // v5 贪婪加点：每级 +5% 概率额外掉落玄铁（必掉趋势）
-        const greedLv = this.scene.runtime._greedLv || 0;
-        if (greedLv > 0 && Math.random() < 0.05 * greedLv) {
-            this.scene.items.push(new PickupItem(this.scene, 'darkIron', this.worldX, this.worldY));
+        // 修复：克隆体/幻影不掉落 loot，避免满地玄铁
+        if (!this._isClone && !this._isPhantom) {
+            this.dropLoot();
+            this.dropRareLoot();
+            // v5 贪婪加点：每级 +0.5% 概率额外掉落玄铁（大幅降低）
+            const greedLv = this.scene.runtime._greedLv || 0;
+            if (greedLv > 0 && Math.random() < 0.005 * greedLv) {
+                this.scene.items.push(new PickupItem(this.scene, 'darkIron', this.worldX, this.worldY));
+            }
         }
         if (leveled) this.scene.onLevelUp();
         // 精英任务怪击杀进度
@@ -2148,7 +2151,7 @@ class Boss {
         this.accelRate = 0.015; this.hitRadius = 55;
         this.container = null; this.hpBar = null; this.hpBarBg = null;
         this.nameText = null; this.lastSpecial = 0;
-        this.specialCooldown = 1600; this.attackCooldown = 0;
+        this.specialCooldown = 1.6; this.attackCooldown = 0;
         this.phase = 1; this.bossLevel = 1;
         this.config = BossConfigs.find(c => c.id === type) || BossConfigs[0];
     }
@@ -2387,13 +2390,13 @@ class Boss {
         }
         if (this.hp < this.maxHp * 0.5 && this.phase === 1) {
             this.phase = 2;
-            this.speed *= 1.35; this.specialCooldown *= 0.65;
+            this.speed *= 1.35; this.specialCooldown = Math.max(0.5, this.specialCooldown * 0.65);
             this.scene.particles.explosion(this.screenX(), this.screenY(), 150, this.config.glowColor);
             this.showPhaseText('狂暴！', '#ff4400');
         }
         if (this.hp < this.maxHp * 0.25 && this.phase === 2) {
             this.phase = 3;
-            this.speed *= 1.2; this.specialCooldown *= 0.7;
+            this.speed *= 1.2; this.specialCooldown = Math.max(0.3, this.specialCooldown * 0.7);
             this.showPhaseText('终末形态！', '#ff0000');
             this.spawnMinions();
         }
@@ -2460,13 +2463,26 @@ class Boss {
         const px = this.scene.playerWorldX, py = this.scene.playerWorldY;
         const dx = px - this.worldX, dy = py - this.worldY;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 70) { this.currentSpeed *= 0.92; return; }
+        // 修复：距离近时减速但不完全停止
+        if (dist < 70) { 
+            this.currentSpeed *= 0.92;
+            // 仍然轻微移动，避免完全卡住
+            if (dist > 0 && this.currentSpeed > 5) {
+                this.worldX += (dx / dist) * this.currentSpeed * dt * 0.3;
+                this.worldY += (dy / dist) * this.currentSpeed * dt * 0.3;
+            }
+            return; 
+        }
         let targetSpeed = this.speed * (this.phase >= 2 ? 1.2 : 1);
         if (this.slowed > 0 && this.slowAmount) targetSpeed *= (1 - this.slowAmount);
-        this.currentSpeed += (targetSpeed - this.currentSpeed) * this.accelRate;
+        // 修复：加速更快，避免 BOSS 看起来像卡住
+        this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(0.1, this.accelRate * 5);
         this.currentSpeed = Math.max(0, Math.min(targetSpeed, this.currentSpeed));
-        this.worldX += (dx / dist) * this.currentSpeed * dt;
-        this.worldY += (dy / dist) * this.currentSpeed * dt;
+        // 修复：确保 BOSS 真的在移动
+        if (dist > 0) {
+            this.worldX += (dx / dist) * this.currentSpeed * dt;
+            this.worldY += (dy / dist) * this.currentSpeed * dt;
+        }
     }
     specialAttack(time) {
         if (time - this.lastSpecial < this.specialCooldown) return;
@@ -2563,23 +2579,24 @@ class Boss {
     laserBeam() {
         const a = Math.atan2(this.scene.playerWorldY - this.worldY,
             this.scene.playerWorldX - this.worldX);
-        // v5：激光线条预告（更淡）
+        // 激光预告：细线警告（不再刺眼）
         const telegraphEndX = this.screenX() + Math.cos(a) * 600;
         const telegraphEndY = this.screenY() + Math.sin(a) * 600;
         const midX = (this.screenX() + telegraphEndX) / 2;
         const midY = (this.screenY() + telegraphEndY) / 2;
         const lineLen = Phaser.Math.Distance.Between(this.screenX(), this.screenY(), telegraphEndX, telegraphEndY);
-        const lineShape = this.scene.add.rectangle(midX, midY, lineLen, 8, 0xff4466, 0.12);
+        const lineShape = this.scene.add.rectangle(midX, midY, lineLen, 4, 0xff4466, 0.15);
         lineShape.rotation = a;
-        lineShape.setStrokeStyle(1, 0xff4466, 0.5).setDepth(150);
+        lineShape.setStrokeStyle(1, 0xff4466, 0.4).setDepth(150);
         this.scene.tweens.add({
-            targets: lineShape, alpha: { from: 0.12, to: 0.25 },
+            targets: lineShape, alpha: { from: 0.15, to: 0.3 },
             duration: 450, yoyo: true, repeat: 1
         });
         this.scene.time.delayedCall(900, () => {
             lineShape.destroy();
+            // 激光特效
             this.scene.particles.lineBeam(this.screenX(), this.screenY(),
-                telegraphEndX, telegraphEndY, this.config.glowColor, 20);
+                telegraphEndX, telegraphEndY, this.config.glowColor, 30);
             const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
                 this.scene.playerWorldX, this.scene.playerWorldY);
             if (d < 600) this.scene.playerTakeDamage(this.damage * 0.7);
@@ -5471,10 +5488,19 @@ class GameScene extends Phaser.Scene {
         this.runtime.weapon = WeaponFactory.create(weaponType, this.runtime);
         this.runtime.skill = SkillFactory.create(weaponType);
         
-        // 关键修复：根据存档设置 currentBossIndex，避免重复刷已击败的 BOSS
+        // 关键修复：根据存档设置 currentBossIndex，跳过已击败的 BOSS
         if (this.bossManager) {
-            const defeatedCount = (this.saveData.bossesDefeated || []).length;
-            this.bossManager.currentBossIndex = defeatedCount;
+            const defeatedIds = this.saveData.bossesDefeated || [];
+            // 找到第一个未击败的 BOSS 索引
+            let bossIdx = 0;
+            for (let i = 0; i < BossConfigs.length; i++) {
+                if (!defeatedIds.includes(BossConfigs[i].id)) {
+                    bossIdx = i;
+                    break;
+                }
+                bossIdx = i + 1;
+            }
+            this.bossManager.currentBossIndex = bossIdx;
         }
         // 从存档加载区域进度
         if (typeof this.saveData.currentRegion === 'number') {
