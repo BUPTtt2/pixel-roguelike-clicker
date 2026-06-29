@@ -4899,7 +4899,7 @@ class GameScene extends Phaser.Scene {
         this.menuElements.push(bg, title, subtitle);
 
         // 存档信息面板
-        const panelX = GW / 2 - 280, panelY = 145, panelW = 560, panelH = 380;
+        const panelX = GW / 2 - 280, panelY = 145, panelW = 560, panelH = 360;
         const panel = this.add.rectangle(panelX, panelY, panelW, panelH, 0x111122, 0.95)
             .setStrokeStyle(2, 0x444466).setOrigin(0).setDepth(401);
         this.menuElements.push(panel);
@@ -4931,7 +4931,7 @@ class GameScene extends Phaser.Scene {
                 const col = i % 2;
                 const row = Math.floor(i / 2);
                 const x = panelX + 20 + col * 270;
-                const y = panelY + 25 + row * 28;
+                const y = panelY + 25 + row * 26;
                 const lblTxt = this.add.text(x, y, info.label + ':', {
                     fontSize: '13px', fontFamily: 'Courier New', color: '#888'
                 }).setOrigin(0, 0.5).setDepth(402);
@@ -4950,8 +4950,19 @@ class GameScene extends Phaser.Scene {
             this.menuElements.push(sizeTxt);
         }
 
+        // 体验存档按钮（给审核人快速体验所有内容）
+        const demoBtn = this.add.rectangle(GW / 2, 545, 320, 40, 0x113322, 0.95)
+            .setStrokeStyle(2, 0x44ff88).setInteractive().setDepth(401);
+        const demoTxt = this.add.text(GW / 2, 545, '🎁 加载体验存档（全武器·全难度·满资源）', {
+            fontSize: '14px', fontFamily: 'Courier New', color: '#88ffaa', fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        demoBtn.on('pointerover', () => demoBtn.setStrokeStyle(3, 0xffffff));
+        demoBtn.on('pointerout', () => demoBtn.setStrokeStyle(2, 0x44ff88));
+        demoBtn.on('pointerdown', () => this.loadDemoSave());
+        this.menuElements.push(demoBtn, demoTxt);
+
         // 操作按钮
-        const btnY = 555;
+        const btnY = 600;
         // 返回按钮
         const backBtn = this.add.rectangle(GW / 2 - 225, btnY, 130, 40, 0x223322, 0.95)
             .setStrokeStyle(2, 0x66ff66).setInteractive().setDepth(401);
@@ -4993,6 +5004,46 @@ class GameScene extends Phaser.Scene {
         delBtn.on('pointerdown', () => this.confirmDeleteSave());
 
         this.menuElements.push(backBtn, backTxt, exportBtn, exportTxt, importBtn, importTxt, delBtn, delTxt);
+    }
+
+    // 加载体验存档（全解锁，供审核人快速体验）
+    loadDemoSave() {
+        const demo = {
+            bestTime: 600, bestLevel: 8, totalKills: 2000, totalGold: 50000, totalRuns: 30,
+            unlockedMinions: [], achievements: ['first_boss', 'weapon_master', 'elite_slayer'], titles: ['暗影猎手'],
+            unlockedWeapons: ['sword', 'axe', 'bow', 'staff', 'wand'],
+            secondaryWeapon: null,
+            weaponSkills: {},
+            highestBoss: 8,
+            currentRegion: 4,
+            regionCleared: [true, true, true, true, false],
+            runCount: 30,
+            storyFlags: { prologueDone: true, chapter1Done: true, chapter2Done: true, chapter3Done: true, chapter4Done: true },
+            soulStones: 9999,
+            darkIron: 9999,
+            bossBlood: 99,
+            weaponLevels: { sword: 10, axe: 10, bow: 10, staff: 10, wand: 10 },
+            weaponForms: { sword: 4, axe: 4, bow: 4, staff: 4, wand: 4 },
+            weaponMats: { shadowStone: 99, bloodCrystal: 99 },
+            unlockedDifficulties: ['easy', 'normal', 'hard', 'hell'],
+            difficultyCleared: { easy: true, normal: true, hard: true, hell: false },
+            shadowGodDefeated: false,
+            upgrades: {
+                bloodlust: 5, berserk: 5, ironwall: 5, immortal: 5,
+                shadowstep: 5, gale: 5, greed: 5, sage: 5, element: 5, summon: 5
+            },
+            unlockedUpgrades: ['bloodlust', 'berserk', 'ironwall', 'immortal', 'shadowstep', 'gale', 'greed', 'sage', 'element', 'summon'],
+            chapterProgress: 5,
+            chapterCleared: [true, true, true, true, false],
+            totalMoveDistance: 50000,
+            totalShopPurchases: 50,
+            bossesDefeated: ['gk', 'sl', 'sd', 'ab', 'ts', 'el', 'vp']
+        };
+        SaveData.save(demo);
+        this.saveData = demo;
+        this.selectedDifficulty = null;
+        this.showCenterText('✅ 体验存档已加载\n全武器·全难度·满资源', '#88ffaa', 2500);
+        this.time.delayedCall(2000, () => this.showMainMenu());
     }
 
     // 导出存档（复制到剪贴板）
