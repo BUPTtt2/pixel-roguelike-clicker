@@ -11,7 +11,207 @@
  * ✦ 神秘商人 / 宝箱怪 / 彩虹史莱姆 / 连击称号
  */
 
-const GW = 900, GH = 650, WS = 2500;
+const GW = 900, GH = 650, WS = 3500;
+
+// ==================== 区域系统 ====================
+const REGIONS = [
+    { id: 0, name: '腐朽森林', color: 0x1a3a1a, enemyPool: ['slime', 'bat', 'skeleton'], ambient: 'leaves', portalX: 1200 },
+    { id: 1, name: '沉没沼泽', color: 0x1a2a3a, enemyPool: ['ghost', 'archer', 'skeleton'], ambient: 'fog', portalX: 1200 },
+    { id: 2, name: '焦土荒原', color: 0x3a2a1a, enemyPool: ['demon', 'gargoyle', 'bat'], ambient: 'sand', portalX: 1200 },
+    { id: 3, name: '永夜城堡', color: 0x2a1a3a, enemyPool: ['skeleton', 'ghost', 'demon'], ambient: 'candle', portalX: 1200 },
+    { id: 4, name: '裂隙深处', color: 0x3a0a0a, enemyPool: ['demon', 'gargoyle', 'archer', 'skeleton'], ambient: 'rift', portalX: 0 }
+];
+const REGION_SIZE = 2500; // 每个区域的世界半径
+
+// ==================== 剧情系统 ====================
+const STORY_CHAPTERS = [
+    {
+        regionId: 0,
+        title: '第一章：腐朽森林',
+        bossId: 'gk',
+        quest: { type: 'activate', count: 3, name: '激活符文阵' },
+        intro: '暗影裂隙的侵蚀从这片森林开始。符文阵是封印的关键，但它们已经暗淡了...',
+        npcDialogues: {
+            elder: {
+                intro: '旅行者...你终于来了。森林深处的符文阵已经暗淡，没有它们的力量，哥布林王的封印将会破碎。',
+                questUpdate: (done, total) => `已激活 ${done}/${total} 个符文阵。森林在回应你的力量...`,
+                questComplete: '符文阵全部激活了！传送门已开启，哥布林王在等着你...小心，他曾经是个善良的国王。',
+                afterBoss: '你净化了哥布林王...愿他的灵魂安息。但裂隙深处还有更黑暗的东西在等着你。'
+            }
+        }
+    },
+    {
+        regionId: 1,
+        title: '第二章：沉没沼泽',
+        bossId: 'sl',
+        quest: { type: 'collect', count: 5, name: '清理精英怪' },
+        intro: '沼泽的雾气中隐藏着不祥的气息。据说这里的怪物源于一场失败的炼金实验...',
+        npcDialogues: {
+            alchemist: {
+                intro: '又来了一个冒险者？沼泽里的精英怪物身上有我需要的实验残骸...帮我清理它们，我告诉你通往骷髅领主领地的路。',
+                questUpdate: (done, total) => `已清理 ${done}/${total} 个精英怪。它们的残骸...让我想起了那次实验。`,
+                questComplete: '够了。传送门已开启。听好，骷髅领主...它曾经是我的实验体。它不是自然产生的亡灵。',
+                afterBoss: '你击败了它...也许这是最好的结局。但我总觉得，有什么东西在暗中观察着我们。'
+            }
+        }
+    },
+    {
+        regionId: 2,
+        title: '第三章：焦土荒原',
+        bossId: 'sd',
+        quest: { type: 'collect', count: 3, name: '收集区域信物' },
+        intro: '荒原的烈日下，死神的阴影笼罩一切。收集信物，才能打开通往它的道路...',
+        npcDialogues: {
+            nomad: {
+                intro: '荒原上的死神...它不是来杀戮的。它在这里等待什么。收集3个古代信物，通往它的道路才会开启。',
+                questUpdate: (done, total) => `${done}/${total} 个信物。你知道吗？死神是自愿被腐化的...为了保护什么。`,
+                questComplete: '路开了。去吧，但记住——死神选择被腐化，一定有它的理由。',
+                afterBoss: '死神...自由了。它临终前说的话...你听到了吗？"封印...不能...打开..."它在保护什么？'
+            }
+        }
+    },
+    {
+        regionId: 3,
+        title: '第四章：永夜城堡',
+        bossId: 'ab',
+        quest: { type: 'activate', count: 4, name: '点燃灯塔' },
+        intro: '永夜笼罩的城堡中，暗影伯爵在等待。点燃四座灯塔，才能照亮他的真面目...',
+        npcDialogues: {
+            shade: {
+                intro: '城堡的主人...暗影伯爵。他不是一个普通的暗影。点燃4座灯塔，他才会现出真身。',
+                questUpdate: (done, total) => `${done}/${total} 座灯塔已点燃。光越亮，影子越深...你注意到了吗？`,
+                questComplete: '灯塔全部点燃了。伯爵...不，我不能说。你自己去看吧。但我要告诉你——他和你很像。',
+                afterBoss: '你看到了吗？伯爵的面容...和你一模一样。你...到底是什么？'
+            }
+        }
+    },
+    {
+        regionId: 4,
+        title: '终章：裂隙深处',
+        bossId: 'sg',
+        quest: { type: 'challenge', count: 4, name: '击败BOSS幻影' },
+        intro: '裂隙的最深处，真相等待着。你必须击败过去的所有敌人...才能面对最终的自己。',
+        npcDialogues: {
+            yourself: {
+                intro: '你终于来了...或者说，我终于回来了。这里的幻影是过去的守护者，击败它们，你就能见到...真相。',
+                questUpdate: (done, total) => `${done}/${total} 个幻影已击败。每打败一个，我就想起更多...关于我们的事。`,
+                questComplete: '幻影全部消散了。门开了。门后是...暗影神。不，暗影神就是你。你就是暗影神的一部分。',
+                afterBoss: '你...击败了自己。裂隙正在愈合。但你...还能回到原来的世界吗？也许下一次，你会做出不同的选择。'
+            }
+        }
+    }
+];
+
+// 动态对话条件
+function getNPCDialogue(chapterIdx, saveData) {
+    const chapter = STORY_CHAPTERS[chapterIdx];
+    if (!chapter) return null;
+    const npcKey = Object.keys(chapter.npcDialogues)[0];
+    const dialogues = chapter.npcDialogues[npcKey];
+
+    // 根据条件返回不同对话
+    const bossesDefeated = (saveData.highestBoss || 0);
+
+    if (saveData.runCount > 1 && chapterIdx === 0) {
+        return { npc: npcKey, text: '又是你...你感觉到了吗？这一切好像发生过。也许...真的发生过。' };
+    }
+    if (bossesDefeated > chapterIdx + 1 && dialogues.afterBoss) {
+        return { npc: npcKey, text: dialogues.afterBoss };
+    }
+    return { npc: npcKey, text: dialogues.intro };
+}
+
+// ==================== 武器技能槽选项 ====================
+const WEAPON_SKILLS = {
+    sword: [
+        [
+            { id: 'bleed+', name: '流血强化', desc: '流血伤害+50%，持续+2秒' },
+            { id: 'lifesteal+', name: '吸血强化', desc: '吸血比例+3%' }
+        ],
+        [
+            { id: 'combo+', name: '连击大师', desc: '连击阈值从5降为3，连击伤害+20%' },
+            { id: 'crit+', name: '致命打击', desc: '暴击率+15%，暴击伤害+50%' }
+        ],
+        [
+            { id: 'bloodburst+', name: '血爆强化', desc: '血爆范围+50%，伤害+100%' },
+            { id: 'frenzy', name: '血怒狂暴', desc: '连击时移速+30%，攻速+20%' }
+        ]
+    ],
+    axe: [
+        [
+            { id: 'burn+', name: '燃烧强化', desc: '燃烧伤害+50%，可叠加至7层' },
+            { id: 'stun+', name: '震荡打击', desc: '眩晕概率+15%，眩晕时间+0.5秒' }
+        ],
+        [
+            { id: 'firefield+', name: '火域扩张', desc: '火域范围+60%，持续+2秒' },
+            { id: 'aoe+', name: '横扫一切', desc: '攻击范围+30%，伤害+15%' }
+        ],
+        [
+            { id: 'fireexplosion+', name: '引爆强化', desc: '火域引爆伤害+150%' },
+            { id: 'meteor', name: '陨石天降', desc: '每5秒召唤陨石砸向最强敌人' }
+        ]
+    ],
+    staff: [
+        [
+            { id: 'slow+', name: '寒冰渗透', desc: '减速效果+20%，持续+1秒' },
+            { id: 'split+', name: '冰锥分裂', desc: '冰锥额外分裂+1发' }
+        ],
+        [
+            { id: 'freeze+', name: '深度冰冻', desc: '冰冻概率+10%，冰冻时间+0.5秒' },
+            { id: 'chain+', name: '寒冰链', desc: '冰锥命中后连锁到附近2个敌人' }
+        ],
+        [
+            { id: 'execute+', name: '处决强化', desc: '处决阈值从20%提升至30%' },
+            { id: 'blizzard', name: '暴风雪', desc: '每8秒释放暴风雪，全场减速80%持续3秒' }
+        ]
+    ],
+    bow: [
+        [
+            { id: 'pierce+', name: '穿透强化', desc: '护甲穿透+25%' },
+            { id: 'range+', name: '远程专精', desc: '射程+30%，箭矢速度+20%' }
+        ],
+        [
+            { id: 'critdouble+', name: '精准双发', desc: '暴击双发概率+20%' },
+            { id: 'rapid', name: '急速射', desc: '攻速+25%，但伤害-10%' }
+        ],
+        [
+            { id: 'mark+', name: '死亡标记', desc: '标记伤害加成从25%提升至50%' },
+            { id: 'multishot', name: '散射箭', desc: '每次射出3支箭，但伤害-30%' }
+        ]
+    ],
+    wand: [
+        [
+            { id: 'resonance+', name: '共鸣强化', desc: '元素共鸣伤害+40%' },
+            { id: 'mana+', name: '法力充盈', desc: '攻击速度+15%' }
+        ],
+        [
+            { id: 'arcane+', name: '奥术印记', desc: '奥术印记积累速度+50%' },
+            { id: 'element+', name: '元素亲和', desc: '所有元素效果持续+2秒' }
+        ],
+        [
+            { id: 'storm+', name: '风暴强化', desc: '元素风暴伤害+100%，范围+30%' },
+            { id: 'overload', name: '法术过载', desc: '每3次攻击触发一次免费元素风暴' }
+        ]
+    ]
+};
+
+const WEAPON_FUSIONS = {
+    'sword+axe':   { name: '烈焰血刃', icon: '⚔🔥', color: 0xff4422, comboSkill: '血焰爆：流血+燃烧融合，每3秒触发范围爆炸' },
+    'sword+staff': { name: '冰霜刺客', icon: '⚔❄', color: 0x44aaff, comboSkill: '冰血穿刺：冰冻敌人受到流血伤害+200%' },
+    'sword+bow':   { name: '幻影游侠', icon: '⚔🏹', color: 0x44ff88, comboSkill: '幻影斩雨：近战命中后自动射出3支追踪箭' },
+    'sword+wand':  { name: '符文剑士', icon: '⚔✦', color: 0xaa44ff, comboSkill: '符文血印：流血敌人受到奥术伤害+150%' },
+    'axe+staff':   { name: '寒炎战锤', icon: '🔥❄', color: 0x88ffff, comboSkill: '蒸气爆破：燃烧+冰冻同时存在时触发蒸气爆炸' },
+    'axe+bow':     { name: '熔岩猎手', icon: '🔥🏹', color: 0xff8844, comboSkill: '熔岩箭雨：箭矢命中附带燃烧效果' },
+    'axe+wand':    { name: '烬火法师', icon: '🔥✦', color: 0xff44aa, comboSkill: '烬火风暴：燃烧层数翻倍时触发奥术风暴' },
+    'staff+bow':   { name: '霜风射手', icon: '❄🏹', color: 0x88ddff, comboSkill: '冰霜箭风暴：暴击时冰冻全部敌人2秒' },
+    'staff+wand':  { name: '极寒术士', icon: '❄✦', color: 0x6688ff, comboSkill: '绝对零度：冰冻敌人被击杀时冻结周围敌人' },
+    'bow+wand':    { name: '奥术游侠', icon: '🏹✦', color: 0x44ffaa, comboSkill: '奥术弹幕：每5秒发射一轮奥术穿透弹' }
+};
+
+function getFusionKey(w1, w2) {
+    const pair = [w1, w2].sort().join('+');
+    return pair;
+}
 
 const COLORS = {
     player: 0x4488ff, playerBody: 0x3366cc, playerBodyDark: 0x224499,
@@ -82,26 +282,26 @@ const Specializations = [
     { id: 'ele_ice', path: 'element', name: '冰霜亲和', icon: '❄', desc: '攻击附加冰冻', color: 0x00ccff, stat: 'ice', value: 1 },
     { id: 'ele_light', path: 'element', name: '闪电亲和', icon: '⚡', desc: '攻击附加闪电链', color: 0xffff00, stat: 'lightning', value: 1 },
     { id: 'ele_shadow', path: 'element', name: '暗影亲和', icon: '🌑', desc: '攻击附加暗影', color: 0x8800ff, stat: 'shadow', value: 1 },
-    { id: 'fort_gold', path: 'fortune', name: '财富祝福', icon: '💰', desc: '金币 +15%', color: 0xffd700, stat: 'gold', value: 0.15 },
-    { id: 'fort_exp', path: 'fortune', name: '经验加成', icon: '⭐', desc: '经验 +12%', color: 0xffee00, stat: 'exp', value: 0.12 },
-    { id: 'fort_magnet', path: 'fortune', name: '磁力', icon: '🧲', desc: '拾取范围+60%', color: 0xffcc00, stat: 'magnet', value: 60 },
-    { id: 'fort_luck', path: 'fortune', name: '幸运', icon: '🍀', desc: '稀有掉落x2', color: 0xddaa00, stat: 'luck', value: 1 },
-    { id: 'sum_strong', path: 'summon', name: '强化随从', icon: '💪', desc: '随从伤害+25%', color: 0x44ff88, stat: 'minionDmg', value: 0.25 },
-    { id: 'sum_double', path: 'summon', name: '双随从', icon: '👥', desc: '可拥有2随从', color: 0x66ffaa, stat: 'minionCount', value: 1 },
-    { id: 'sum_element', path: 'summon', name: '元素随从', icon: '✨', desc: '随从附加元素', color: 0x88ffcc, stat: 'minionEle', value: 1 },
-    { id: 'sum_master', path: 'summon', name: '召唤大师', icon: '👑', desc: '随从攻速+15%', color: 0x44ffaa, stat: 'minionSpd', value: 0.15 }
+    { id: 'fort_gold', path: 'fortune', name: '财富祝福', icon: '💰', desc: '金币 +8%', color: 0xffd700, stat: 'gold', value: 0.08 },
+    { id: 'fort_exp', path: 'fortune', name: '经验加成', icon: '⭐', desc: '经验 +8%', color: 0xffee00, stat: 'exp', value: 0.08 },
+    { id: 'fort_magnet', path: 'fortune', name: '磁力', icon: '🧲', desc: '拾取范围+40%', color: 0xffcc00, stat: 'magnet', value: 40 },
+    { id: 'fort_luck', path: 'fortune', name: '幸运', icon: '', desc: '稀有掉落+50%', color: 0xddaa00, stat: 'luck', value: 0.5 },
+    { id: 'sum_strong', path: 'summon', name: '强化随从', icon: '💪', desc: '随从伤害+25%', color: 0x44ff88, stat: 'minionDmg', value: 0.25, isMinion: true },
+    { id: 'sum_double', path: 'summon', name: '双随从', icon: '👥', desc: '可拥有2随从', color: 0x66ffaa, stat: 'minionCount', value: 1, isMinion: true },
+    { id: 'sum_element', path: 'summon', name: '元素随从', icon: '✨', desc: '随从附加元素', color: 0x88ffcc, stat: 'minionEle', value: 1, isMinion: true },
+    { id: 'sum_master', path: 'summon', name: '召唤大师', icon: '👑', desc: '随从攻速+15%', color: 0x44ffaa, stat: 'minionSpd', value: 0.15, isMinion: true }
 ];
 
 // ==================== Boss配置 (8个) ====================
 const BossConfigs = [
-    { id: 'gk', name: '哥布林王', time: 120, hp: 800, dmg: 22, spd: 48, radius: 55, size: 100, exp: 60, gold: 90, color: COLORS.boss.gk, glowColor: COLORS.boss.gkGlow, icon: '👑', desc: '贪婪的哥布林之王', skills: ['cleave', 'summonGoblins', 'enrage'] },
-    { id: 'sl', name: '骷髅领主', time: 240, hp: 1600, dmg: 32, spd: 38, radius: 60, size: 115, exp: 120, gold: 180, color: COLORS.boss.sl, glowColor: COLORS.boss.slGlow, icon: '💀', desc: '亡灵军团指挥官', skills: ['throwBone', 'summonSkeletons', 'deathBloom', 'enrage'] },
-    { id: 'sd', name: '暗影龙', time: 360, hp: 3000, dmg: 45, spd: 52, radius: 70, size: 135, exp: 220, gold: 300, color: COLORS.boss.sd, glowColor: COLORS.boss.sdGlow, icon: '🐉', desc: '翱翔于天空的远古巨龙', skills: ['flyAttack', 'fireBreath', 'tornado', 'meteorShower', 'enrage'] },
-    { id: 'ab', name: '深渊魔王', time: 480, hp: 5000, dmg: 60, spd: 44, radius: 80, size: 160, exp: 380, gold: 525, color: COLORS.boss.ab, glowColor: COLORS.boss.abGlow, icon: '😈', desc: '来自深渊的恐怖存在', skills: ['cleave', 'darkSlash', 'hellfire', 'summonDemon', 'enrage'] },
-    { id: 'ts', name: '时空守护者', time: 600, hp: 7500, dmg: 78, spd: 40, radius: 85, size: 170, exp: 600, gold: 825, color: COLORS.boss.ts, glowColor: COLORS.boss.tsGlow, icon: '⏳', desc: '操控时间的神秘存在', skills: ['timeSlow', 'timeStop', 'teleportStrike', 'summonShadow', 'enrage'] },
-    { id: 'el', name: '元素领主', time: 720, hp: 10500, dmg: 98, spd: 38, radius: 90, size: 180, exp: 900, gold: 1200, color: COLORS.boss.el, glowColor: COLORS.boss.elGlow, icon: '🌋', desc: '掌控四元素的大师', skills: ['fireWave', 'iceAge', 'lightningStorm', 'earthquake', 'enrage'] },
-    { id: 'vp', name: '虚空先知', time: 840, hp: 14500, dmg: 120, spd: 42, radius: 95, size: 195, exp: 1300, gold: 1800, color: COLORS.boss.vp, glowColor: COLORS.boss.vpGlow, icon: '🔮', desc: '能看穿一切幻象的智者', skills: ['illusion', 'mindControl', 'voidRift', 'summonClones', 'enrage'] },
-    { id: 'sg', name: '暗影神', time: 960, hp: 22000, dmg: 160, spd: 46, radius: 110, size: 230, exp: 2000, gold: 3000, color: COLORS.boss.sg, glowColor: COLORS.boss.sgGlow, icon: '👁', desc: '所有暗影的主宰', skills: ['shadowStorm', 'deathRay', 'voidPrison', 'summonAllies', 'ultimate', 'enrage'] }
+    { id: 'gk', name: '哥布林王', time: 120, hp: 1000, dmg: 18, spd: 48, radius: 55, size: 100, exp: 60, gold: 72, color: COLORS.boss.gk, glowColor: COLORS.boss.gkGlow, icon: '👑', desc: '贪婪的哥布林之王', skills: ['cleave', 'summonGoblins', 'enrage'] },
+    { id: 'sl', name: '骷髅领主', time: 240, hp: 2000, dmg: 26, spd: 38, radius: 60, size: 115, exp: 120, gold: 144, color: COLORS.boss.sl, glowColor: COLORS.boss.slGlow, icon: '💀', desc: '亡灵军团指挥官', skills: ['throwBone', 'summonSkeletons', 'deathBloom', 'enrage'] },
+    { id: 'sd', name: '暗影龙', time: 360, hp: 3800, dmg: 36, spd: 52, radius: 70, size: 135, exp: 220, gold: 240, color: COLORS.boss.sd, glowColor: COLORS.boss.sdGlow, icon: '🐉', desc: '翱翔于天空的远古巨龙', skills: ['flyAttack', 'fireBreath', 'tornado', 'meteorShower', 'enrage'] },
+    { id: 'ab', name: '深渊魔王', time: 480, hp: 6200, dmg: 48, spd: 44, radius: 80, size: 160, exp: 380, gold: 420, color: COLORS.boss.ab, glowColor: COLORS.boss.abGlow, icon: '😈', desc: '来自深渊的恐怖存在', skills: ['cleave', 'darkSlash', 'hellfire', 'summonDemon', 'enrage'] },
+    { id: 'ts', name: '时空守护者', time: 600, hp: 9500, dmg: 62, spd: 40, radius: 85, size: 170, exp: 600, gold: 660, color: COLORS.boss.ts, glowColor: COLORS.boss.tsGlow, icon: '⏳', desc: '操控时间的神秘存在', skills: ['timeSlow', 'timeStop', 'teleportStrike', 'summonShadow', 'enrage'] },
+    { id: 'el', name: '元素领主', time: 720, hp: 13500, dmg: 78, spd: 38, radius: 90, size: 180, exp: 900, gold: 960, color: COLORS.boss.el, glowColor: COLORS.boss.elGlow, icon: '🌋', desc: '掌控四元素的大师', skills: ['fireWave', 'iceAge', 'lightningStorm', 'earthquake', 'enrage'] },
+    { id: 'vp', name: '虚空先知', time: 840, hp: 18500, dmg: 96, spd: 42, radius: 95, size: 195, exp: 1300, gold: 1440, color: COLORS.boss.vp, glowColor: COLORS.boss.vpGlow, icon: '🔮', desc: '能看穿一切幻象的智者', skills: ['illusion', 'mindControl', 'voidRift', 'summonClones', 'enrage'] },
+    { id: 'sg', name: '暗影神', time: 960, hp: 28000, dmg: 128, spd: 46, radius: 110, size: 230, exp: 2000, gold: 2400, color: COLORS.boss.sg, glowColor: COLORS.boss.sgGlow, icon: '👁', desc: '所有暗影的主宰', skills: ['shadowStorm', 'deathRay', 'voidPrison', 'summonAllies', 'ultimate', 'enrage'] }
 ];
 
 // ==================== 武器系统 ====================
@@ -119,21 +319,30 @@ class Weapon {
     }
     setRuntime(rt) { this._runtime = rt; }
     getPromotionStage() { return (this._runtime && this._runtime.weaponPromotions[this.id]) || 0; }
+    // v5：武器形态阶段（0-4），来自 saveData.weaponForms
+    getForm() {
+        if (!this._runtime || !this._runtime._scene) return 0;
+        const sd = this._runtime._scene.saveData;
+        return (sd.weaponForms && sd.weaponForms[this.id]) || 0;
+    }
     canAttack(now, spec, level = 1) { return now - this.lastAttack >= this.getCooldown(spec, level); }
     attack(now) { this.lastAttack = now; this.attackAnim = 1; }
     getDamage(level, spec) {
         const growth = this.getDamageGrowth(level);
         const base = this.baseDmg + growth;
-        return Math.floor(base * (1 + (spec.atk || 0)) * (1 + (spec.weaponDmg || 0)));
+        // v5：形态 4 终极 +25% 基础伤害
+        const formMult = 1 + 0.25 * this.getForm();
+        return Math.floor(base * (1 + (spec.atk || 0)) * (1 + (spec.weaponDmg || 0)) * formMult);
     }
     getDamageGrowth(level) {
         const stage = this.getPromotionStage();
+        // 武器伤害成长放缓（约-30%），避免攻击力远超小怪血量增长
         const growthTable = {
-            sword: [8, 12, 15],
-            axe: [18, 22, 25],
-            staff: [5, 8, 10],
-            bow: [10, 12, 15],
-            wand: [4, 6, 8]
+            sword: [5, 8, 10],
+            axe: [12, 15, 17],
+            staff: [3, 5, 7],
+            bow: [7, 8, 10],
+            wand: [3, 4, 5]
         };
         const arr = growthTable[this.id] || growthTable.sword;
         const stageIdx = stage === 0 ? 0 : (stage === 1 ? (level >= 7 ? 2 : 1) : 2);
@@ -155,13 +364,15 @@ class Weapon {
         if (this.id === 'bow') base += (level - 1) * 0.025;
         if (this.id === 'axe') base += (level - 1) * 0.01;
         if (this.id === 'wand') base += (level - 1) * 0.012;
+        // v5：形态 4（黑炎）+15% 暴击率
+        if (this.getForm() >= 4) base += 0.15;
         return base;
     }
     getCritDamage(spec, level = 1) {
-        let base = 2.0 + (spec.critDmg || 0);
-        if (this.id === 'bow') base += (level - 1) * 0.12;
-        if (this.id === 'sword') base += (level - 1) * 0.06;
-        if (this.id === 'axe') base += (level - 1) * 0.08;
+        let base = 1.8 + (spec.critDmg || 0);
+        if (this.id === 'bow') base += (level - 1) * 0.10;
+        if (this.id === 'sword') base += (level - 1) * 0.05;
+        if (this.id === 'axe') base += (level - 1) * 0.06;
         return base;
     }
     getRange(level = 1) {
@@ -171,6 +382,8 @@ class Weapon {
         if (this.id === 'staff') r += (level - 1) * 15;
         if (this.id === 'bow') r += (level - 1) * 25;
         if (this.id === 'wand') r += (level - 1) * 12;
+        // v5：形态 1（剑气/远射）+30% 攻击范围
+        if (this.getForm() >= 1) r *= 1.3;
         return r;
     }
     getArc(level = 1) {
@@ -181,12 +394,15 @@ class Weapon {
     }
     getLifeSteal(level = 1) {
         const stage = this.getPromotionStage();
+        let ls = 0;
         if (this.id === 'sword') {
-            const base = 0.08 + (level - 1) * 0.02;
-            return stage >= 1 ? base + (level - 4) * 0.03 : base;
+            const base = 0.04 + (level - 1) * 0.008;
+            ls = stage >= 1 ? base + (level - 4) * 0.01 : base;
         }
-        if (this.id === 'axe') return 0.05 + (level - 1) * 0.015;
-        return 0;
+        if (this.id === 'axe') ls = 0.02 + (level - 1) * 0.005;
+        // v5：形态 2（吸血）+6% 吸血（降低）
+        if (this.getForm() >= 2) ls += 0.06;
+        return ls;
     }
     getPierce(level = 1) {
         const stage = this.getPromotionStage();
@@ -236,11 +452,11 @@ class Weapon {
 
 const WeaponFactory = {
     configs: {
-        sword: { id: 'sword', name: '暗影剑', icon: '⚔', color: COLORS.sword, glowColor: COLORS.swordGlow, desc: '基础:流血吸血 | 进阶:流血叠加3层 | 终极:连击血怒+血爆', baseDmg: 28, baseCd: 220, range: 125, type: 'melee_arc', arc: Math.PI / 1.8, width: 75, skillName: '暗影冲刺', skillIcon: '💨', skillCd: 6000, skillDesc: '向前冲刺，路径上敌人4倍伤害+回血', skillAction: 'swordDash' },
-        axe: { id: 'axe', name: '烈焰斧', icon: '🪓', color: COLORS.axe, glowColor: COLORS.axeGlow, desc: '基础:燃烧击晕 | 进阶:燃烧叠加5层 | 终极:火域+引爆', baseDmg: 70, baseCd: 850, range: 160, type: 'melee_arc', arc: Math.PI / 1.4, width: 120, skillName: '焚天斩', skillIcon: '🔥', skillCd: 9000, skillDesc: 'AOE圆形，范围250，燃烧6秒', skillAction: 'axeCleave' },
-        staff: { id: 'staff', name: '冰霜法杖', icon: '🔮', color: COLORS.staff, glowColor: COLORS.staffGlow, desc: '基础:减速控场 | 进阶:冰锥分裂+冰冻 | 终极:冰冻领域+秒杀', baseDmg: 20, baseCd: 700, range: 420, type: 'ranged_line', arc: 0, width: 20, skillName: '极寒冰环', skillIcon: '❄', skillCd: 9000, skillDesc: '360度冰环，冻结1.5秒', skillAction: 'staffNova' },
-        bow: { id: 'bow', name: '狩猎弓', icon: '🏹', color: COLORS.bow, glowColor: COLORS.bowGlow, desc: '基础:护甲穿透 | 进阶:暴击双发 | 终极:标记+全穿透', baseDmg: 40, baseCd: 600, range: 700, type: 'ranged_projectile', arc: 0, width: 8, skillName: '流星箭雨', skillIcon: '🌠', skillCd: 10000, skillDesc: '向天空射出25支箭覆盖大范围', skillAction: 'bowBarrage' },
-        wand: { id: 'wand', name: '奥术魔杖', icon: '✨', color: COLORS.wand, glowColor: COLORS.wandGlow, desc: '基础:追踪弹射 | 进阶:元素共鸣 | 终极:奥术印记+元素风暴', baseDmg: 14, baseCd: 450, range: 350, type: 'ranged_bounce', arc: 0, width: 10, skillName: '奥术风暴', skillIcon: '🌪', skillCd: 7000, skillDesc: '连续16发追踪飞弹', skillAction: 'wandStorm' }
+        sword: { id: 'sword', name: '暗影剑', icon: '⚔', color: COLORS.sword, glowColor: COLORS.swordGlow, desc: '基础:流血吸血 | 进阶:流血叠加3层 | 终极:连击血怒+血爆', baseDmg: 28, baseCd: 420, range: 125, type: 'melee_arc', arc: Math.PI / 1.8, width: 75, skillName: '暗影冲刺', skillIcon: '', skillCd: 6000, skillDesc: '向前冲刺，路径上敌人4倍伤害+回血', skillAction: 'swordDash' },
+        axe: { id: 'axe', name: '烈焰斧', icon: '🪓', color: COLORS.axe, glowColor: COLORS.axeGlow, desc: '基础:燃烧击晕 | 进阶:燃烧叠加5层 | 终极:火域+引爆', baseDmg: 70, baseCd: 1100, range: 160, type: 'melee_arc', arc: Math.PI / 1.4, width: 120, skillName: '焚天斩', skillIcon: '🔥', skillCd: 9000, skillDesc: 'AOE圆形，范围250，燃烧6秒', skillAction: 'axeCleave' },
+        staff: { id: 'staff', name: '冰霜法杖', icon: '🔮', color: COLORS.staff, glowColor: COLORS.staffGlow, desc: '基础:减速控场 | 进阶:冰锥分裂+冰冻 | 终极:冰冻领域+秒杀', baseDmg: 20, baseCd: 950, range: 420, type: 'ranged_line', arc: 0, width: 20, skillName: '极寒冰环', skillIcon: '❄', skillCd: 9000, skillDesc: '360度冰环，冻结1.5秒', skillAction: 'staffNova' },
+        bow: { id: 'bow', name: '狩猎弓', icon: '', color: COLORS.bow, glowColor: COLORS.bowGlow, desc: '基础:护甲穿透 | 进阶:暴击双发 | 终极:标记+全穿透', baseDmg: 40, baseCd: 850, range: 700, type: 'ranged_projectile', arc: 0, width: 8, skillName: '流星箭雨', skillIcon: '', skillCd: 10000, skillDesc: '向天空射出25支箭覆盖大范围', skillAction: 'bowBarrage' },
+        wand: { id: 'wand', name: '奥术魔杖', icon: '✨', color: COLORS.wand, glowColor: COLORS.wandGlow, desc: '基础:追踪弹射 | 进阶:元素共鸣 | 终极:奥术印记+元素风暴', baseDmg: 14, baseCd: 650, range: 350, type: 'ranged_bounce', arc: 0, width: 10, skillName: '奥术风暴', skillIcon: '', skillCd: 7000, skillDesc: '连续16发追踪飞弹', skillAction: 'wandStorm' }
     },
     create(type, runtime) {
         const w = new Weapon(this.configs[type] || this.configs.sword);
@@ -278,8 +494,42 @@ const SaveData = {
         return {
             bestTime: 0, bestLevel: 0, totalKills: 0, totalGold: 0, totalRuns: 0,
             unlockedMinions: [], achievements: [], titles: [],
-            unlockedWeapons: ['sword', 'bow'],
-            highestBoss: 0
+            unlockedWeapons: ['sword'],
+            secondaryWeapon: null,
+            weaponSkills: {},
+            highestBoss: 0,
+            currentRegion: 0,
+            regionCleared: [false, false, false, false, false],
+            runCount: 0,
+            storyFlags: {},
+            // === v5 三资源分离 ===
+            soulStones: 0,      // 紫色 — 角色加点
+            darkIron: 0,        // 橙色 — 武器升级
+            bossBlood: 0,       // 金色 — 武器形态进化
+            // === v5 武器系统 ===
+            weaponLevels: { sword: 0, axe: 0, bow: 0, staff: 0, wand: 0 },  // 1-10级，玄铁升级
+            weaponForms: { sword: 0, axe: 0, bow: 0, staff: 0, wand: 0 },   // 形态阶段 0-4
+            weaponMats: { shadowStone: 0, bloodCrystal: 0 },                 // 进化道具
+            // === v5 难度锁 ===
+            unlockedDifficulties: ['easy'],   // 默认只开简单
+            difficultyCleared: { easy: false, normal: false, hard: false, hell: false },
+            shadowGodDefeated: false,
+            // === v5 角色加点 10分支 ===
+            upgrades: {
+                bloodlust: 0, berserk: 0,     // 输出
+                ironwall: 0, immortal: 0,     // 生存
+                shadowstep: 0, gale: 0,       // 机动
+                greed: 0, sage: 0,            // 资源
+                element: 0, summon: 0         // 特性
+            },
+            unlockedUpgrades: ['bloodlust', 'ironwall', 'shadowstep', 'greed'],  // 默认4分支
+            // === v5 章节进度 ===
+            chapterProgress: 1,  // 当前章节 1-5
+            chapterCleared: [false, false, false, false, false],
+            // === v5 统计 ===
+            totalMoveDistance: 0,
+            totalShopPurchases: 0,
+            bossesDefeated: []   // 击败过的BOSS类型
         };
     }
 };
@@ -710,6 +960,15 @@ class Projectile {
                 if (this.pierce <= 0 && this.bounceCount <= 0) this.destroy();
             }
         }
+        // 命中幻影/分裂体
+        this.scene.bossManager.alivePhantoms.forEach(b => {
+            if (this.hitEnemies.has(b)) return;
+            const d = Phaser.Math.Distance.Between(this.worldX, this.worldY, b.worldX, b.worldY);
+            if (d < b.hitRadius + this.size) {
+                this.hitBoss(b); this.hitEnemies.add(b);
+                if (this.pierce <= 0 && this.bounceCount <= 0) this.destroy();
+            }
+        });
     }
     hitEnemy(enemy) {
         this.hitEnemies.add(enemy.id);
@@ -723,7 +982,7 @@ class Projectile {
         if (this.freeze) { enemy.applyFreeze(1500); this.scene.particles.freezeEffect(this.screenX(), this.screenY()); }
         if (this.burn) enemy.applyBurn(Math.floor(dmg * 0.2), 3000);
         this.applyElementEffect(enemy, dmg);
-        if (died) this.scene.addWeaponExp(this.scene.runtime.weaponType, 2);
+        if (died) this.scene.addWeaponExp(this.scene.runtime.weaponType, 1);
     }
     hitBoss(boss) {
         const wlvl = this.scene.weaponLevels[this.scene.runtime.weaponType] || 1;
@@ -789,19 +1048,22 @@ class Enemy {
         this.stunned = 0; this.slowed = 0; this.burning = 0; this.frozen = 0;
         this.burnDamage = 0; this.walkFrame = 0; this.walkTimer = 0;
         this.isElite = false; this.isRainbow = false; this.rainbowTimer = 0;
+        this.accelRate = 0.15; // 加快加速度，让小怪快速冲向玩家
     }
     get config() {
         return {
-            slime: { hp: 28, dmg: 5, spd: 40, radius: 18, pattern: 'direct', color: COLORS.enemy.slime, darkColor: COLORS.enemy.slimeDark, exp: 3, gold: 0, size: 32 },
-            bat: { hp: 18, dmg: 4, spd: 75, radius: 16, pattern: 'zigzag', color: COLORS.enemy.bat, darkColor: COLORS.enemy.batDark, exp: 3, gold: 0, size: 28, diveAttack: true },
-            skeleton: { hp: 40, dmg: 8, spd: 48, radius: 20, pattern: 'direct', color: COLORS.enemy.skeleton, darkColor: COLORS.enemy.skeletonDark, exp: 5, gold: 0, size: 36, throwBone: true },
-            ghost: { hp: 32, dmg: 7, spd: 55, radius: 22, pattern: 'teleport', color: COLORS.enemy.ghost, darkColor: COLORS.enemy.ghostDark, exp: 7, gold: 0, size: 34 },
-            gargoyle: { hp: 100, dmg: 15, spd: 35, radius: 28, pattern: 'slow', color: COLORS.enemy.gargoyle, darkColor: COLORS.enemy.gargoyleDark, exp: 14, gold: 5, size: 48, armor: true },
-            archer: { hp: 26, dmg: 10, spd: 45, radius: 18, pattern: 'keepDistance', color: COLORS.enemy.archer, darkColor: COLORS.enemy.archerDark, exp: 8, gold: 0, size: 32, shootArrow: true },
-            demon: { hp: 55, dmg: 14, spd: 55, radius: 24, pattern: 'direct', color: COLORS.enemy.demon, darkColor: COLORS.enemy.demonDark, exp: 11, gold: 0, size: 40, chargeAttack: true },
-            chest: { hp: 60, dmg: 30, spd: 60, radius: 22, pattern: 'direct', color: 0x8B4513, darkColor: 0x654321, exp: 20, gold: 15, size: 36 },
-            rainbow: { hp: 50, dmg: 8, spd: 70, radius: 18, pattern: 'zigzag', color: 0xff00ff, darkColor: 0x00ffff, exp: 15, gold: 8, size: 30 }
-        }[this.type] || { hp: 28, dmg: 5, spd: 40, radius: 18, pattern: 'direct', color: 0xff0000, exp: 4, gold: 2, size: 32 };
+            slime: { hp: 28, dmg: 4, spd: 40, radius: 20, pattern: 'direct', color: COLORS.enemy.slime, darkColor: COLORS.enemy.slimeDark, exp: 3, gold: 0, size: 48 },
+            bat: { hp: 18, dmg: 3, spd: 75, radius: 18, pattern: 'zigzag', color: COLORS.enemy.bat, darkColor: COLORS.enemy.batDark, exp: 3, gold: 0, size: 42, diveAttack: true },
+            skeleton: { hp: 40, dmg: 6, spd: 48, radius: 22, pattern: 'direct', color: COLORS.enemy.skeleton, darkColor: COLORS.enemy.skeletonDark, exp: 5, gold: 0, size: 52, throwBone: true },
+            ghost: { hp: 32, dmg: 5, spd: 55, radius: 24, pattern: 'teleport', color: COLORS.enemy.ghost, darkColor: COLORS.enemy.ghostDark, exp: 7, gold: 0, size: 48 },
+            gargoyle: { hp: 100, dmg: 12, spd: 35, radius: 30, pattern: 'slow', color: COLORS.enemy.gargoyle, darkColor: COLORS.enemy.gargoyleDark, exp: 14, gold: 5, size: 64, armor: true },
+            archer: { hp: 26, dmg: 8, spd: 45, radius: 20, pattern: 'keepDistance', color: COLORS.enemy.archer, darkColor: COLORS.enemy.archerDark, exp: 8, gold: 0, size: 46, shootArrow: true },
+            demon: { hp: 55, dmg: 11, spd: 55, radius: 26, pattern: 'direct', color: COLORS.enemy.demon, darkColor: COLORS.enemy.demonDark, exp: 11, gold: 0, size: 56, chargeAttack: true },
+            // v5：远程小怪 mage（暗影法师，弹幕攻击）
+            mage: { hp: 22, dmg: 9, spd: 38, radius: 18, pattern: 'keepDistance', color: 0x9966ff, darkColor: 0x5533aa, exp: 10, gold: 0, size: 44, shootMagic: true },
+            chest: { hp: 60, dmg: 24, spd: 60, radius: 24, pattern: 'direct', color: 0x8B4513, darkColor: 0x654321, exp: 20, gold: 15, size: 44 },
+            rainbow: { hp: 50, dmg: 6, spd: 70, radius: 20, pattern: 'zigzag', color: 0xff00ff, darkColor: 0x00ffff, exp: 15, gold: 8, size: 42 }
+        }[this.type] || { hp: 28, dmg: 4, spd: 40, radius: 18, pattern: 'direct', color: 0xff0000, exp: 4, gold: 2, size: 32 };
     }
     spawn(x, y, difficulty = 1) {
         const cfg = this.config;
@@ -820,17 +1082,26 @@ class Enemy {
         this.scene.particles.spawnEffect(this.screenX(), this.screenY(), cfg.color);
         return this;
     }
-    setElite() {
+    setElite(tier = 1) {
         this.isElite = true;
+        this.eliteTier = tier;
         const cfg = this.config;
-        this.hp = Math.floor(this.hp * 3.5);
+        // v5：三档精英递进，后期加强（HP×15 + 护甲 + 狂暴）
+        const hpMul = tier === 1 ? 3.5 : (tier === 2 ? 7 : 15);   // tier3 10→15
+        const dmgMul = tier === 1 ? 2 : (tier === 2 ? 3 : 4.5);
+        const scale = tier === 1 ? 1.45 : (tier === 2 ? 1.7 : 2.0);
+        const glowColor = tier === 1 ? 0xffaa00 : (tier === 2 ? 0xff3322 : 0xaa00ff);
+        this.hp = Math.floor(this.hp * hpMul);
         this.maxHp = this.hp;
-        this.damage = Math.floor(this.damage * 2);
+        this.damage = Math.floor(this.damage * dmgMul);
         this.hitRadius = cfg.radius * 1.3;
-        this.speed = cfg.spd * 1.15;
+        this.speed = cfg.spd * (tier === 1 ? 1.15 : (tier === 2 ? 1.25 : 1.35));
+        // v5：精英护甲（固定减伤），防止后期一刀秒
+        this.armor = tier === 1 ? 5 : (tier === 2 ? 15 : 30);
+        this.enraged = false;  // v5：狂暴标记
         if (this.container) {
-            this.container.setScale(1.45);
-            const eliteGlow = this.scene.add.circle(0, 0, cfg.size * 0.9, 0xffaa00, 0.25);
+            this.container.setScale(scale);
+            const eliteGlow = this.scene.add.circle(0, 0, cfg.size * 0.9, glowColor, 0.25);
             eliteGlow.setDepth(-1);
             this.container.add(eliteGlow);
             this.scene.tweens.add({
@@ -840,6 +1111,40 @@ class Enemy {
                 yoyo: true, repeat: -1,
                 duration: 800
             });
+            // 更强精英额外加皇冠标记
+            if (tier >= 2) {
+                const crownColor = tier === 2 ? '#ff5555' : '#cc55ff';
+                const crown = this.scene.add.text(0, -cfg.size * 0.7, tier === 2 ? '▲▲' : '★★★', {
+                    fontSize: tier === 2 ? '12px' : '14px', fill: crownColor, fontWeight: 'bold'
+                }).setOrigin(0.5).setDepth(1);
+                this.container.add(crown);
+            }
+            // v5：tier3 精英加护甲标识
+            if (tier >= 3) {
+                const armorIcon = this.scene.add.text(0, cfg.size * 0.5, '🛡', {
+                    fontSize: '10px', fill: '#88ccff'
+                }).setOrigin(0.5).setDepth(1);
+                this.container.add(armorIcon);
+            }
+        }
+    }
+    // v5：精英狂暴（血量<30%时触发）
+    checkEnrage() {
+        if (!this.isElite || this.enraged) return;
+        if (this.hp < this.maxHp * 0.3) {
+            this.enraged = true;
+            this.speed *= 1.3;
+            this.damage = Math.floor(this.damage * 1.5);
+            if (this.container) {
+                this.scene.cameras.main.flash(150, 255, 50, 50);
+                const rageText = this.scene.add.text(this.screenX(), this.screenY() - 40, '狂暴！', {
+                    fontSize: '16px', fill: '#ff3322', stroke: '#000', strokeThickness: 3, fontWeight: 'bold'
+                }).setOrigin(0.5).setDepth(200);
+                this.scene.tweens.add({
+                    targets: rageText, y: rageText.y - 20, alpha: 0, duration: 1200,
+                    onComplete: () => rageText.destroy()
+                });
+            }
         }
     }
     createSprite() {
@@ -847,28 +1152,50 @@ class Enemy {
         const size = cfg.size;
         this.container = this.scene.add.container(this.screenX(), this.screenY());
         this.container.setDepth(50);
-        const body = this.scene.add.ellipse(0, size * 0.1, size * 0.75, size * 0.55, cfg.color);
-        const eye1 = this.scene.add.circle(-size * 0.15, -size * 0.05, size * 0.1, 0x000000);
-        const eye2 = this.scene.add.circle(size * 0.15, -size * 0.05, size * 0.1, 0x000000);
-        this.container.add([body, eye1, eye2]);
-        if (this.type === 'bat') {
-            const w1 = this.scene.add.ellipse(-size * 0.35, 0, size * 0.5, size * 0.22, cfg.darkColor);
-            const w2 = this.scene.add.ellipse(size * 0.35, 0, size * 0.5, size * 0.22, cfg.darkColor);
-            w1.rotation = -0.4; w2.rotation = 0.4;
-            this.container.add([w1, w2]);
-            this.wing1 = w1; this.wing2 = w2;
+
+        // 有精灵表的类型用真实精灵动画；chest/rainbow 保留几何绘制
+        const spriteTypes = ['slime', 'bat', 'skeleton', 'ghost', 'gargoyle', 'demon', 'archer', 'mage'];
+        const hasSprite = spriteTypes.includes(this.type) && this.scene.textures.exists(`${this.type}_idle`);
+
+        if (hasSprite) {
+            // 地面阴影
+            const shadow = this.scene.add.ellipse(0, size * 0.35, size * 0.7, size * 0.18, 0x000000, 0.35);
+            // 精灵本体（64x64 或 32x32 帧，缩放到 cfg.size）
+            const sprite = this.scene.add.sprite(0, 0, `${this.type}_idle`);
+            const frameSize = (this.type === 'archer') ? 32 : 64;
+            sprite.setScale(size / frameSize);
+            sprite.play(`${this.type}_idle`);
+            this.container.add([shadow, sprite]);
+            this.sprite = sprite;
+            this.shadow = shadow;
+            // ghost 加蓝白 tint 营造幽灵感
+            if (this.type === 'ghost') sprite.setTint(0xccddff);
+        } else {
+            // 几何 fallback（chest / rainbow / 精灵缺失时）
+            const body = this.scene.add.ellipse(0, size * 0.1, size * 0.75, size * 0.55, cfg.color);
+            const eye1 = this.scene.add.circle(-size * 0.15, -size * 0.05, size * 0.1, 0x000000);
+            const eye2 = this.scene.add.circle(size * 0.15, -size * 0.05, size * 0.1, 0x000000);
+            this.container.add([body, eye1, eye2]);
+            if (this.type === 'bat') {
+                const w1 = this.scene.add.ellipse(-size * 0.35, 0, size * 0.5, size * 0.22, cfg.darkColor);
+                const w2 = this.scene.add.ellipse(size * 0.35, 0, size * 0.5, size * 0.22, cfg.darkColor);
+                w1.rotation = -0.4; w2.rotation = 0.4;
+                this.container.add([w1, w2]);
+                this.wing1 = w1; this.wing2 = w2;
+            }
+            if (this.type === 'chest') {
+                const lid = this.scene.add.rectangle(0, -size * 0.3, size * 0.9, size * 0.15, cfg.darkColor);
+                const lock = this.scene.add.rectangle(0, 0, size * 0.15, size * 0.15, 0xffd700);
+                const eye1c = this.scene.add.circle(-size * 0.15, -size * 0.05, size * 0.08, 0xff0000);
+                const eye2c = this.scene.add.circle(size * 0.15, -size * 0.05, size * 0.08, 0xff0000);
+                this.container.add([lid, lock, eye1c, eye2c]);
+            }
+            if (this.type === 'rainbow') {
+                this.rainbowColors = [0xff0000, 0xff8800, 0xffff00, 0x00ff00, 0x00ffff, 0x0088ff, 0xff00ff];
+                this.rainbowIdx = 0;
+            }
         }
-        if (this.type === 'chest') {
-            const lid = this.scene.add.rectangle(0, -size * 0.3, size * 0.9, size * 0.15, cfg.darkColor);
-            const lock = this.scene.add.rectangle(0, 0, size * 0.15, size * 0.15, 0xffd700);
-            const eye1c = this.scene.add.circle(-size * 0.15, -size * 0.05, size * 0.08, 0xff0000);
-            const eye2c = this.scene.add.circle(size * 0.15, -size * 0.05, size * 0.08, 0xff0000);
-            this.container.add([lid, lock, eye1c, eye2c]);
-        }
-        if (this.type === 'rainbow') {
-            this.rainbowColors = [0xff0000, 0xff8800, 0xffff00, 0x00ff00, 0x00ffff, 0x0088ff, 0xff00ff];
-            this.rainbowIdx = 0;
-        }
+
         if (this.type !== 'chest') {
             this.hpBarBg = this.scene.add.rectangle(0, -size * 0.65, size * 0.9, 6, 0x220000);
             this.hpBar = this.scene.add.rectangle(-size * 0.45, -size * 0.65, size * 0.9, 6, 0xff3344);
@@ -890,6 +1217,36 @@ class Enemy {
     update(delta, time) {
         if (!this.alive) return;
         const dt = delta / 1000;
+        // 元素状态条（头顶）
+        if (this.bleeding > 0 || this.burning > 0 || this.frozen > 0 || this.slowed > 0) {
+            if (!this.statusBar) {
+                this.statusBar = this.scene.add.container(this.screenX(), this.screenY() - this.config.size - 12);
+                this.statusBar.setDepth(55);
+            }
+            this.statusBar.x = this.screenX();
+            this.statusBar.y = this.screenY() - this.config.size - 12;
+            // 清空重建
+            this.statusBar.removeAll(true);
+            let xOff = 0;
+            if (this.bleeding > 0) {
+                this.statusBar.add(this.scene.add.circle(xOff, 0, 4, 0xff4444));
+                xOff += 10;
+            }
+            if (this.burning > 0) {
+                this.statusBar.add(this.scene.add.circle(xOff, 0, 4, 0xff8844));
+                xOff += 10;
+            }
+            if (this.frozen > 0) {
+                this.statusBar.add(this.scene.add.circle(xOff, 0, 4, 0x44aaff));
+                xOff += 10;
+            }
+            if (this.slowed > 0) {
+                this.statusBar.add(this.scene.add.circle(xOff, 0, 4, 0xaa44ff));
+            }
+        } else if (this.statusBar) {
+            this.statusBar.destroy();
+            this.statusBar = null;
+        }
         if (this.isRainbow) {
             this.rainbowTimer += delta;
             if (this.rainbowTimer > 200) {
@@ -961,6 +1318,18 @@ class Enemy {
         }
     }
     updateWalkAnim(delta) {
+        // 精灵模式：根据移动状态切换 idle/run 动画
+        if (this.sprite) {
+            const moving = this.currentSpeed > 5;
+            const desired = moving ? `${this.type}_run` : `${this.type}_idle`;
+            if (this.sprite.anims && this.sprite.anims.currentAnim && this.sprite.anims.currentAnim.key !== desired) {
+                // 死亡动画播放中不切换
+                if (this.dying) return;
+                this.sprite.play(desired);
+            }
+            return;
+        }
+        // 几何模式：保留原逻辑（无实际视觉效果，仅占位）
         if (this.currentSpeed < 5) return;
         this.walkTimer += delta;
         if (this.walkTimer > 150) {
@@ -1013,6 +1382,8 @@ class Enemy {
         if (cfg.diveAttack && time - this.lastSpecial > 3500 && dist < 300) { this.lastSpecial = time; this.diveAttack(); }
         if (cfg.throwBone && time - this.lastSpecial > 2500 && dist < 250) { this.lastSpecial = time; this.throwBone(); }
         if (cfg.shootArrow && time - this.lastSpecial > 2000 && dist < 380 && dist > 100) { this.lastSpecial = time; this.shootArrow(); }
+        // v5：法师弹幕攻击
+        if (cfg.shootMagic && time - this.lastSpecial > 2800 && dist < 420 && dist > 120) { this.lastSpecial = time; this.shootMagic(); }
         if (cfg.chargeAttack && time - this.lastSpecial > 4000 && dist < 200 && dist > 50) { this.lastSpecial = time; this.chargeAttack(); }
     }
     diveAttack() {
@@ -1031,6 +1402,19 @@ class Enemy {
         this.scene.projectiles.push(new Projectile(
             this.scene, this.worldX, this.worldY, this.scene.playerWorldX, this.scene.playerWorldY,
             this.damage * 0.85, 'enemyArrow', { speed: 380 }));
+    }
+    // v5：法师弹幕攻击（3发扇形）
+    shootMagic() {
+        const cx = this.scene.playerWorldX, cy = this.scene.playerWorldY;
+        const baseAngle = Math.atan2(cy - this.worldY, cx - this.worldX);
+        for (let i = -1; i <= 1; i++) {
+            const ang = baseAngle + i * 0.3;
+            const tx = this.worldX + Math.cos(ang) * 500;
+            const ty = this.worldY + Math.sin(ang) * 500;
+            this.scene.projectiles.push(new Projectile(
+                this.scene, this.worldX, this.worldY, tx, ty,
+                this.damage * 0.7, 'enemyMagic', { speed: 280, color: 0xcc66ff }));
+        }
     }
     chargeAttack() {
         const px = this.scene.playerWorldX, py = this.scene.playerWorldY;
@@ -1061,9 +1445,16 @@ class Enemy {
             const reduction = 0.4 * (1 - armorPierce);
             dmg = Math.floor(dmg * (1 - reduction));
         }
+        // v5：精英护甲固定减伤
+        if (this.isElite && this.armor && this.armor > 0) {
+            const armorReduction = Math.max(0, this.armor * (1 - armorPierce));
+            dmg = Math.max(1, dmg - armorReduction);
+        }
         this.hp -= dmg; this.updateHpBar();
         this.scene.showDamageNumber(this.screenX(), this.screenY() - 25, dmg, isCrit);
         if (isCrit) this.scene.particles.critEffect(this.screenX(), this.screenY() - 20);
+        // v5：检查精英狂暴
+        this.checkEnrage();
         this.scene.tweens.add({
             targets: this.container,
             x: this.screenX() + (Math.random() - 0.5) * 6,
@@ -1103,10 +1494,26 @@ class Enemy {
             this.container.alpha = 0.7;
             this.scene.time.delayedCall(80, () => { if (this.container) this.container.alpha = 1; });
         }
+        // 精灵模式：播放受击动画（不中断 run/idle 太久，仅短暂闪现）
+        if (this.sprite && !this.dying) {
+            const hitKey = `${this.type}_hit`;
+            if (this.scene.anims.exists(hitKey) && this.sprite.anims) {
+                this.sprite.play(hitKey, false);
+                // 受击动画结束后回到移动/待机
+                this.sprite.once('animationcomplete', () => {
+                    if (this.alive && this.sprite) {
+                        const back = this.currentSpeed > 5 ? `${this.type}_run` : `${this.type}_idle`;
+                        this.sprite.play(back);
+                    }
+                });
+            }
+        }
     }
     die() {
         this.alive = false;
+        this.dying = true;
         const cfg = this.config;
+        if (this.statusBar) { this.statusBar.destroy(); this.statusBar = null; }
         this.scene.runtime.killCount++;
         this.scene.runtime.addCombo();
         this.scene.runtime.addGold(cfg.gold);
@@ -1116,26 +1523,69 @@ class Enemy {
         this.scene.particles.hit(this.screenX(), this.screenY(), cfg.color, 10, 3);
         this.dropLoot();
         this.dropRareLoot();
+        // v5 贪婪加点：每级 +5% 概率额外掉落玄铁（必掉趋势）
+        const greedLv = this.scene.runtime._greedLv || 0;
+        if (greedLv > 0 && Math.random() < 0.05 * greedLv) {
+            this.scene.items.push(new PickupItem(this.scene, 'darkIron', this.worldX, this.worldY));
+        }
         if (leveled) this.scene.onLevelUp();
-        this.scene.tweens.add({
-            targets: this.container, alpha: 0, scale: 0.3, rotation: Math.PI / 4,
-            duration: 350, ease: 'Cubic.easeIn',
-            onComplete: () => { if (this.container) { this.container.destroy(); this.container = null; } }
-        });
+        // 精英任务怪击杀进度
+        if (this.isQuestTarget) {
+            this.scene.runtime.questProgress++;
+            const chapter = STORY_CHAPTERS[this.scene.runtime.currentRegion];
+            if (chapter) {
+                const npcKey = Object.keys(chapter.npcDialogues)[0];
+                const dialogues = chapter.npcDialogues[npcKey];
+                if (this.scene.runtime.questProgress >= chapter.quest.count) {
+                    this.scene.runtime.questCompleted = true;
+                    this.scene.showStoryDialogue(dialogues.questComplete, '#44ff88');
+                    this.scene.spawnBossPortal();
+                } else {
+                    this.scene.showStoryDialogue(dialogues.questUpdate(this.scene.runtime.questProgress, chapter.quest.count));
+                }
+            }
+        }
+        // 精灵模式：播放死亡动画后销毁；几何模式：tween 淡出
+        if (this.sprite && this.scene.anims.exists(`${this.type}_death`)) {
+            if (this.hpBar) this.hpBar.setVisible(false);
+            if (this.hpBarBg) this.hpBarBg.setVisible(false);
+            this.sprite.play(`${this.type}_death`);
+            this.sprite.once('animationcomplete', () => {
+                if (this.container) { this.container.destroy(); this.container = null; }
+            });
+            // 兜底：1.5 秒后强制销毁（防止动画事件未触发）
+            this.scene.time.delayedCall(1500, () => { if (this.container) { this.container.destroy(); this.container = null; } });
+        } else {
+            this.scene.tweens.add({
+                targets: this.container, alpha: 0, scale: 0.3, rotation: Math.PI / 4,
+                duration: 350, ease: 'Cubic.easeIn',
+                onComplete: () => { if (this.container) { this.container.destroy(); this.container = null; } }
+            });
+        }
     }
     dropLoot() {
-        if (Math.random() > 0.12) return;
+        // v5：大幅降低普通掉落概率，加入三资源
+        if (Math.random() > 0.015) return;  // 原0.025 → 0.015
         const r = Math.random();
         let type;
         if (r < 0.55) type = 'exp';
-        else if (r < 0.85) type = 'health';
-        else type = 'element_shard';
+        else if (r < 0.70) type = 'health';  // 降低血包概率
+        else if (r < 0.93) type = 'element_shard';
+        else type = 'soulStone';  // 极小概率掉魂石
         this.scene.items.push(new PickupItem(this.scene, type, this.worldX, this.worldY));
     }
     dropRareLoot() {
-        if (Math.random() > 0.04) return;
-        const pool = ['gem_red', 'gem_blue', 'gem_purple', 'exp_big', 'magnet', 'bomb', 'arcane_dust'];
-        const type = pool[Math.floor(Math.random() * pool.length)];
+        // v5：稀有掉落概率降低，加入玄铁和影石
+        if (Math.random() > 0.008) return;  // 原0.01 → 0.008
+        const r = Math.random();
+        let type;
+        if (r < 0.35) type = 'gem_red';
+        else if (r < 0.55) type = 'gem_blue';
+        else if (r < 0.72) type = 'gem_purple';
+        else if (r < 0.84) type = 'exp_big';
+        else if (r < 0.92) type = 'magnet';
+        else if (r < 0.97) type = 'darkIron';      // 玄铁（武器升级）
+        else type = 'shadowStone';                   // 影石（武器进化道具）
         this.scene.items.push(new PickupItem(this.scene, type, this.worldX, this.worldY));
     }
 }
@@ -1151,7 +1601,8 @@ class EnemyManager {
     }
     getDifficulty(gameTime) {
         const minutes = gameTime / 60;
-        const base = 1 + minutes * 0.22 + Math.pow(minutes, 1.3) * 0.08;
+        // 加强后期：小怪血量随时间更陡增长，避免后期被秒杀
+        const base = 1 + minutes * 0.30 + Math.pow(minutes, 1.4) * 0.12;
         return base * (this.scene && this.scene.runtime ? this.scene.runtime.difficulty : 1);
     }
     update(gameTime, delta) {
@@ -1159,14 +1610,15 @@ class EnemyManager {
         this.checkWave(gameTime);
         this.checkMerchant(gameTime);
         const waveMultiplier = 1 + (this.waveNumber - 1) * 0.12;
-        this.spawnInterval = Math.max(500, 2000 - gameTime * 8 - this.waveNumber * 50);
-        const baseSpawnCount = 1 + Math.floor(this.waveNumber / 3);
-        const spawnCount = Math.min(5, baseSpawnCount);
+        // 降低基础间隔，提高生成数，避免波次间长时间无怪
+        this.spawnInterval = Math.max(350, 1200 - gameTime * 6 - this.waveNumber * 40);
+        const baseSpawnCount = 2 + Math.floor(this.waveNumber / 2);
+        const spawnCount = Math.min(8, baseSpawnCount);
         if (gameTime * 1000 - this.lastSpawn > this.spawnInterval / waveMultiplier &&
             this.enemies.filter(e => e.alive).length < this.maxEnemies + this.waveNumber * 2) {
             this.lastSpawn = gameTime * 1000;
             for (let i = 0; i < spawnCount; i++) {
-                this.scene.time.delayedCall(i * 120, () => {
+                this.scene.time.delayedCall(i * 90, () => {
                     if (this.scene.gameState === 'playing' && !this.scene.paused) {
                         this.spawnEnemy(difficulty * waveMultiplier * 0.85, gameTime);
                     }
@@ -1211,10 +1663,15 @@ class EnemyManager {
         this.merchantActive.spawn(x, y);
     }
     spawnEnemy(difficulty, time) {
-        const types = this.getAvailableTypes(time);
-        let type = types[Math.floor(Math.random() * types.length)];
+        const region = REGIONS[this.scene.runtime.currentRegion];
+        const pool = region ? region.enemyPool : this.getAvailableTypes(time);
+        let type = pool[Math.floor(Math.random() * pool.length)];
         if (Math.random() < 0.015) type = 'chest';
         if (Math.random() < 0.008) type = 'rainbow';
+        // v5：远程小怪极小概率出现（archer 3%, mage 2%）
+        const remoteRoll = Math.random();
+        if (remoteRoll < 0.02) type = 'mage';
+        else if (remoteRoll < 0.05) type = 'archer';
 
         const side = Math.floor(Math.random() * 4);
         let x, y;
@@ -1229,9 +1686,23 @@ class EnemyManager {
         const enemy = new Enemy(this.scene, type);
         enemy.spawn(x, y, difficulty);
 
-        const eliteChance = 0.06 + this.waveNumber * 0.01 + (time / 60) * 0.02;
-        if (Math.random() < Math.min(0.35, eliteChance)) {
-            enemy.setElite();
+        // 精英怪递进：前期少量普通精英，中期普通+更强，后期更强+最更强
+        const eliteChance = 0.10 + this.waveNumber * 0.02 + (time / 60) * 0.025;
+        if (Math.random() < Math.min(0.65, eliteChance)) {
+            // 判定精英档位
+            let tier = 1;
+            const w = this.waveNumber;
+            const r = Math.random();
+            if (w < 3) {
+                tier = 1;
+            } else if (w < 6) {
+                tier = r < 0.65 ? 1 : 2;
+            } else if (w < 9) {
+                tier = r < 0.30 ? 1 : (r < 0.80 ? 2 : 3);
+            } else {
+                tier = r < 0.15 ? 1 : (r < 0.60 ? 2 : 3);
+            }
+            enemy.setElite(tier);
         }
 
         this.enemies.push(enemy);
@@ -1347,8 +1818,7 @@ class TreasureChest {
         });
 
         this.container.setSize(40, 40);
-        this.container.setInteractive();
-        this.container.on('pointerdown', () => this.open());
+        // 宝箱改为纯靠近开启，不允许远程点击
     }
     screenX() { return this.worldX - this.scene.playerWorldX + GW / 2; }
     screenY() { return this.worldY - this.scene.playerWorldY + GH / 2; }
@@ -1360,7 +1830,7 @@ class TreasureChest {
         }
         const d = Phaser.Math.Distance.Between(
             this.scene.playerWorldX, this.scene.playerWorldY, this.worldX, this.worldY);
-        if (d < 50 && !this.opened) {
+        if (d < 65 && !this.opened) {
             this.open();
         }
     }
@@ -1453,7 +1923,13 @@ class PickupItem {
             bomb: { c: 0x222222, icon: '💣' },
             element_shard: { c: 0x00ffaa, icon: null, shape: 'shard' },
             arcane_dust: { c: 0xcc88ff, icon: null, shape: 'dust' },
-            element_crystal: { c: 0xff8866, icon: null, shape: 'crystal' }
+            element_crystal: { c: 0xff8866, icon: null, shape: 'crystal' },
+            // === v5 三资源 ===
+            soulStone: { c: 0xaa44ff, icon: '✦', shape: 'gem' },     // 紫色 魂石
+            darkIron: { c: 0xff8833, icon: '⛏', shape: 'shard' },     // 橙色 玄铁
+            bossBlood: { c: 0xffcc00, icon: '✺', shape: 'bigstar' },  // 金色 BOSS之血
+            shadowStone: { c: 0x8844cc, icon: '◈', shape: 'crystal' },// 影石（进化道具）
+            bloodCrystal: { c: 0xff3366, icon: '◆', shape: 'crystal' } // 血晶（进化道具）
         };
         const m = map[this.type] || map.gold;
         this.container.add([this.scene.add.circle(0, 0, 16, m.c, 0.3), glow,
@@ -1465,6 +1941,8 @@ class PickupItem {
         else if (m.shape === 'dust') this.container.add(this.scene.add.circle(0, 0, 8, m.c));
         else if (m.shape === 'crystal') this.container.add(this.scene.add.star(0, 0, 6, 7, 14, m.c));
         if (m.icon) this.container.add(this.scene.add.text(0, 0, m.icon, { fontSize: '16px' }).setOrigin(0.5));
+        // 放大掉落物图标，便于看清
+        this.container.setScale(1.3);
     }
     screenX() { return this.worldX - this.scene.playerWorldX + GW / 2; }
     screenY() { return this.worldY - this.scene.playerWorldY + GH / 2; }
@@ -1477,6 +1955,7 @@ class PickupItem {
     pickup() {
         this.alive = false;
         this.scene.audio.play('pickup');
+        const sd = this.scene.saveData;
         switch (this.type) {
             case 'health': this.scene.runtime.heal(50); this.scene.particles.healEffect(GW / 2, GH / 2 - 20); break;
             case 'gold': this.scene.runtime.addGold(10); this.scene.particles.goldEffect(this.screenX(), this.screenY(), 4); break;
@@ -1491,6 +1970,30 @@ class PickupItem {
             case 'element_shard': this.scene.runtime.elements.shard++; break;
             case 'arcane_dust': this.scene.runtime.elements.dust++; break;
             case 'element_crystal': this.scene.runtime.elements.crystal++; break;
+            // === v5 三资源 ===
+            case 'soulStone':
+                sd.soulStones = (sd.soulStones || 0) + 1;
+                this.scene.particles.hit(this.screenX(), this.screenY(), 0xaa44ff, 8, 3);
+                break;
+            case 'darkIron':
+                sd.darkIron = (sd.darkIron || 0) + 1;
+                this.scene.particles.hit(this.screenX(), this.screenY(), 0xff8833, 8, 3);
+                break;
+            case 'bossBlood':
+                sd.bossBlood = (sd.bossBlood || 0) + 1;
+                this.scene.particles.hit(this.screenX(), this.screenY(), 0xffcc00, 12, 4);
+                this.scene.cameras.main.flash(200, 255, 200, 100);
+                break;
+            case 'shadowStone':
+                sd.weaponMats = sd.weaponMats || { shadowStone: 0, bloodCrystal: 0 };
+                sd.weaponMats.shadowStone = (sd.weaponMats.shadowStone || 0) + 1;
+                this.scene.particles.hit(this.screenX(), this.screenY(), 0x8844cc, 8, 3);
+                break;
+            case 'bloodCrystal':
+                sd.weaponMats = sd.weaponMats || { shadowStone: 0, bloodCrystal: 0 };
+                sd.weaponMats.bloodCrystal = (sd.weaponMats.bloodCrystal || 0) + 1;
+                this.scene.particles.hit(this.screenX(), this.screenY(), 0xff3366, 8, 3);
+                break;
             case 'bomb':
                 const bombWlvl = this.scene.weaponLevels[this.scene.runtime.weaponType] || 1;
                 const dmg = this.scene.runtime.weapon.getDamage(bombWlvl, this.scene.runtime.spec) * 5;
@@ -1501,11 +2004,42 @@ class PickupItem {
                         this.scene.bossManager.boss.worldX, this.scene.bossManager.boss.worldY);
                     if (bd < 150) this.scene.bossManager.boss.takeDamage(dmg, true);
                 }
+                this.scene.bossManager.alivePhantoms.forEach(b => {
+                    const bd = Phaser.Math.Distance.Between(this.worldX, this.worldY, b.worldX, b.worldY);
+                    if (bd < 150) b.takeDamage(dmg, true);
+                });
                 this.scene.particles.explosion(this.screenX(), this.screenY(), 150, 0xff4400);
-                this.scene.cameras.main.shake(300, 0.015);
+                this.scene.cameras.main.shake(300, 0.008);
                 break;
         }
+        SaveData.save(sd);
         this.scene.particles.hit(this.screenX(), this.screenY(), 0xffffff, 6, 3);
+        // 拾取浮动文字说明用途（颜色区分类型）
+        const descMap = {
+            health: '+50 生命', gold: '+10 金币', exp: '+12 经验', shield: '+20 护盾',
+            gem_red: '+3% 攻击', gem_blue: '+3% 护甲', gem_purple: '+10% 火伤',
+            gold_big: '+50 金币', exp_big: '+40 经验', magnet: '+60 拾取范围',
+            element_shard: '+1 元素碎片', arcane_dust: '+1 奥术尘', element_crystal: '+1 元素结晶',
+            soulStone: '+1 魂石（角色加点）', darkIron: '+1 玄铁（武器升级）',
+            bossBlood: '+1 BOSS之血（武器进化）', shadowStone: '+1 影石（武器进化）',
+            bloodCrystal: '+1 血晶（武器进化）', bomb: '范围爆炸！'
+        };
+        const descColorMap = {
+            soulStone: '#cc88ff', darkIron: '#ffaa55', bossBlood: '#ffdd44',
+            shadowStone: '#aa66dd', bloodCrystal: '#ff6688'
+        };
+        const desc = descMap[this.type] || '';
+        if (desc) {
+            const ftColor = descColorMap[this.type] || '#ffffff';
+            const ft = this.scene.add.text(this.screenX(), this.screenY() - 20, desc, {
+                fontSize: '14px', fontFamily: 'Courier New', color: ftColor,
+                stroke: '#000', strokeThickness: 3, fontWeight: 'bold'
+            }).setOrigin(0.5).setDepth(200);
+            this.scene.tweens.add({
+                targets: ft, y: ft.y - 30, alpha: 0, duration: 1000,
+                onComplete: () => ft.destroy()
+            });
+        }
         this.container.destroy(); this.container = null;
     }
 }
@@ -1567,7 +2101,7 @@ class Boss {
         this.accelRate = 0.015; this.hitRadius = 55;
         this.container = null; this.hpBar = null; this.hpBarBg = null;
         this.nameText = null; this.lastSpecial = 0;
-        this.specialCooldown = 4000; this.attackCooldown = 0;
+        this.specialCooldown = 2200; this.attackCooldown = 0;
         this.phase = 1; this.bossLevel = 1;
         this.config = BossConfigs.find(c => c.id === type) || BossConfigs[0];
     }
@@ -1576,9 +2110,21 @@ class Boss {
         this.bossLevel = level;
         this.worldX = this.scene.playerWorldX;
         this.worldY = this.scene.playerWorldY - 250;
-        this.hp = Math.floor(cfg.hp * difficulty * (1 + (level - 1) * 0.3));
-        this.maxHp = this.hp;
-        this.damage = Math.floor(cfg.dmg * difficulty * (1 + (level - 1) * 0.2));
+        // v5：BOSS 多血条系统（根据难度和BOSS类型决定血条数）
+        const diffName = this.scene.runtime?.difficultyName || '普通';
+        const baseBars = { '简单': 3, '普通': 5, '困难': 8, '地狱': 12 };
+        let bars = baseBars[diffName] || 5;
+        // 暗影神特殊：15 条血
+        if (cfg.id === 'sg') bars = diffName === '地狱' ? 15 : Math.max(8, bars + 3);
+        this.totalBars = bars;
+        this.currentBar = 1;
+        // 每条血的血量
+        const perBarHp = Math.floor(cfg.hp * difficulty * 1.6 * (1 + (level - 1) * 0.5));
+        this.perBarHp = perBarHp;
+        this.hp = perBarHp;
+        this.maxHp = perBarHp;
+        this.totalMaxHp = perBarHp * bars;  // 总血量（用于显示）
+        this.damage = Math.floor(cfg.dmg * difficulty * (1 + (level - 1) * 0.25));
         this.speed = cfg.spd;
         this.currentSpeed = 0;
         this.hitRadius = cfg.radius;
@@ -1588,7 +2134,6 @@ class Boss {
         this.attackCooldown = 0;
         this.createSprite();
         this.scene.audio.play('boss');
-        this.scene.cameras.main.shake(800, 0.01);
         return this;
     }
     createSprite() {
@@ -1596,6 +2141,46 @@ class Boss {
         const size = cfg.size;
         this.container = this.scene.add.container(GW / 2, GH / 2 - 250);
         this.container.setDepth(80);
+
+        // 使用程序化生成的像素艺术纹理（96x96，pixelArt 模式硬边渲染）
+        const bossImageKey = 'boss_' + this.config.id;
+        if (this.scene.textures.exists(bossImageKey)) {
+            // 多层光环：外层大而淡，内层小而亮
+            const outerGlow = this.scene.add.circle(0, 0, size * 0.95, cfg.glowColor, 0.12);
+            const midGlow = this.scene.add.circle(0, 0, size * 0.7, cfg.glowColor, 0.22);
+            const innerGlow = this.scene.add.circle(0, 0, size * 0.55, cfg.glowColor, 0.35);
+            // 地面阴影
+            const shadow = this.scene.add.ellipse(0, size * 0.45, size * 0.7, size * 0.18, 0x000000, 0.4);
+            // BOSS 精灵本体
+            const img = this.scene.add.image(0, 0, bossImageKey);
+            img.setDisplaySize(size, size);
+            this.container.add([shadow, outerGlow, midGlow, innerGlow, img]);
+            shadow.setDepth(0);
+            outerGlow.setDepth(1); midGlow.setDepth(2); innerGlow.setDepth(3);
+            img.setDepth(4);
+
+            // 光环脉动（呼吸效果）
+            this.scene.tweens.add({
+                targets: [outerGlow, midGlow],
+                scale: { from: 1, to: 1.12 },
+                alpha: { from: 0.12, to: 0.25 },
+                duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut'
+            });
+            this.scene.tweens.add({
+                targets: innerGlow,
+                scale: { from: 1, to: 1.18 },
+                alpha: { from: 0.35, to: 0.55 },
+                duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut'
+            });
+            // BOSS 上下浮动
+            this.scene.tweens.add({
+                targets: img,
+                y: { from: -size * 0.04, to: size * 0.04 },
+                duration: 2200, yoyo: true, repeat: -1, ease: 'Sine.inOut'
+            });
+            this.bossImage = img;
+            this.bossAura = midGlow; // 由 updateAnim 控制；outerGlow/innerGlow 由 tween 控制
+        } else {
         const aura = this.scene.add.circle(0, 0, size * 0.8, cfg.glowColor, 0.15);
         const aura2 = this.scene.add.circle(0, 0, size * 0.6, cfg.glowColor, 0.25);
         const body = this.scene.add.circle(0, 0, size * 0.55, cfg.color);
@@ -1612,6 +2197,62 @@ class Boss {
         this.bossAura = aura; this.bossBody = body;
         this.bossLeftArm = leftArm; this.bossRightArm = rightArm;
 
+        // 根据BOSS类型添加不同的视觉特征
+        const bossGfx = this.scene.add.graphics();
+        const id = this.config.id;
+        const cx = 0, cy = 0;
+        const r = cfg.size / 2;
+
+        if (id === 'gk') {
+            // 哥布林王：王冠
+            bossGfx.fillStyle(0xffd700);
+            bossGfx.fillTriangle(cx - r * 0.4, cy - r * 0.7, cx, cy - r * 1.1, cx + r * 0.4, cy - r * 0.7);
+        } else if (id === 'sl') {
+            // 骷髅领主：骨头十字
+            bossGfx.fillStyle(0xeeeeee);
+            bossGfx.fillRect(cx - r * 0.1, cy - r * 0.5, r * 0.2, r);
+            bossGfx.fillRect(cx - r * 0.4, cy - r * 0.2, r * 0.8, r * 0.2);
+        } else if (id === 'sd') {
+            // 暗影龙：翅膀
+            bossGfx.fillStyle(cfg.color, 0.6);
+            bossGfx.fillTriangle(cx - r * 0.8, cy, cx - r * 1.3, cy - r * 0.5, cx - r * 1.3, cy + r * 0.3);
+            bossGfx.fillTriangle(cx + r * 0.8, cy, cx + r * 1.3, cy - r * 0.5, cx + r * 1.3, cy + r * 0.3);
+        } else if (id === 'ab') {
+            // 深渊魔王：角
+            bossGfx.fillStyle(0x880000);
+            bossGfx.fillTriangle(cx - r * 0.5, cy - r * 0.7, cx - r * 0.7, cy - r * 1.2, cx - r * 0.3, cy - r * 0.9);
+            bossGfx.fillTriangle(cx + r * 0.5, cy - r * 0.7, cx + r * 0.7, cy - r * 1.2, cx + r * 0.3, cy - r * 0.9);
+        } else if (id === 'ts') {
+            // 时空守护者：时钟环
+            bossGfx.lineStyle(2, 0x88aaff);
+            bossGfx.strokeCircle(cx, cy, r * 1.15);
+            bossGfx.fillStyle(0x88aaff);
+            bossGfx.fillRect(cx - 1, cy - r * 1.15, 2, r * 0.3);
+        } else if (id === 'el') {
+            // 元素领主：四元素小球
+            const elemColors = [0xff4400, 0x44aaff, 0xffaa00, 0x44ff44];
+            for (let i = 0; i < 4; i++) {
+                const ea = (i / 4) * Math.PI * 2;
+                bossGfx.fillStyle(elemColors[i]);
+                bossGfx.fillCircle(cx + Math.cos(ea) * r * 0.9, cy + Math.sin(ea) * r * 0.9, r * 0.15);
+            }
+        } else if (id === 'vp') {
+            // 虚空先知：眼睛
+            bossGfx.fillStyle(0xff0000);
+            bossGfx.fillEllipse(cx, cy, r * 0.6, r * 0.3);
+            bossGfx.fillStyle(0x000000);
+            bossGfx.fillCircle(cx, cy, r * 0.1);
+        } else if (id === 'sg') {
+            // 暗影神：光环
+            bossGfx.lineStyle(3, 0xff4400, 0.5);
+            bossGfx.strokeCircle(cx, cy, r * 1.3);
+            bossGfx.lineStyle(2, 0xff8800, 0.3);
+            bossGfx.strokeCircle(cx, cy, r * 1.5);
+        }
+
+        this.container.add(bossGfx);
+        }
+
         this.hpBarBg = this.scene.add.rectangle(GW / 2, 75, 550, 22, 0x1a0000).setOrigin(0.5);
         this.hpBarBg.setDepth(200).setScrollFactor(0).setStrokeStyle(3, 0x440000);
         this.hpBar = this.scene.add.rectangle(GW / 2 - 272, 75, 544, 16, 0xff2244).setOrigin(0, 0.5);
@@ -1622,9 +2263,14 @@ class Boss {
             fontSize: '22px', fontFamily: 'Courier New', color: '#ff4466',
             stroke: '#000', strokeThickness: 4, fontWeight: 'bold'
         }).setOrigin(0.5).setDepth(204).setScrollFactor(0);
+        // v5：多血条分段指示器（■■■□□□）
+        this.barSegmentsText = this.scene.add.text(GW / 2, 95, '', {
+            fontSize: '14px', fontFamily: 'Courier New', color: '#ffaa44',
+            stroke: '#000', strokeThickness: 2, fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(204).setScrollFactor(0);
 
         if (this.scene.bossManager) {
-            this.scene.bossManager.bossUI.push(this.hpBarBg, this.hpBar, this.hpBarGlow, this.nameText);
+            this.scene.bossManager.bossUI.push(this.hpBarBg, this.hpBar, this.hpBarGlow, this.nameText, this.barSegmentsText);
         }
 
         this.scene.tweens.add({
@@ -1664,22 +2310,51 @@ class Boss {
         if (this.hp < this.maxHp * 0.5 && this.phase === 1) {
             this.phase = 2;
             this.speed *= 1.35; this.specialCooldown *= 0.65;
-            this.scene.cameras.main.shake(500, 0.018);
             this.scene.particles.explosion(this.screenX(), this.screenY(), 150, this.config.glowColor);
             this.showPhaseText('狂暴！', '#ff4400');
         }
         if (this.hp < this.maxHp * 0.25 && this.phase === 2) {
             this.phase = 3;
             this.speed *= 1.2; this.specialCooldown *= 0.7;
-            this.scene.cameras.main.shake(600, 0.02);
             this.showPhaseText('终末形态！', '#ff0000');
             this.spawnMinions();
         }
+        this.updateUniqueMechanisms(delta);
         this.move(dt);
         this.specialAttack(time);
         this.checkPlayerCollision();
         this.updateSpritePosition();
         this.updateAnim(time);
+    }
+    updateUniqueMechanisms(delta) {
+        const dt = delta / 1000;
+        // 哥布林王：每15秒召唤一波小怪
+        if (this.config.id === 'gk') {
+            this.summonTimer = (this.summonTimer === undefined ? 15 : this.summonTimer) - dt;
+            if (this.summonTimer <= 0) {
+                this.summonTimer = 15;
+                this.summonGoblins();
+            }
+        }
+        // 暗影龙：沙暴隐身（每15秒隐身3秒）
+        if (this.config.id === 'sd') {
+            this._stealthTimer = (this._stealthTimer === undefined ? 15000 : this._stealthTimer) - delta;
+            if (this._stealthTimer <= 0) {
+                this._stealthTimer = 15000;
+                this._stealthDuration = 3000;
+            }
+            if (this._stealthDuration > 0) {
+                this._stealthDuration -= delta;
+                if (this.container) this.container.setAlpha(0.3);
+            } else {
+                if (this.container) this.container.setAlpha(1);
+            }
+        }
+        // 深渊魔王：持续减速玩家（使用 slowTimer 持续刷新）
+        if (this.config.id === 'ab' && this.alive) {
+            this.scene.runtime.slowEffect = 0.5;
+            this.scene.runtime.slowTimer = 1500;
+        }
     }
     showPhaseText(text, color) {
         const t = this.scene.add.text(this.screenX(), this.screenY() - 80, text, {
@@ -1718,17 +2393,68 @@ class Boss {
     specialAttack(time) {
         if (time - this.lastSpecial < this.specialCooldown) return;
         this.lastSpecial = time;
-        const skills = this.config.skills.filter(s => s !== 'enrage');
+        // v5：难度影响 BOSS 招式
+        const diffName = this.scene.runtime.difficultyName || '普通';
+        const allSkills = this.config.skills.filter(s => s !== 'enrage');
+        // 简单：只用第 1 个招式
+        let skills = (diffName === '简单') ? allSkills.slice(0, 1) : allSkills;
         const skill = skills[Math.floor(Math.random() * skills.length)];
         this[skill]();
+        // v5：困难/地狱 组合技（连发两个不同招式）
+        if (diffName === '困难' && Math.random() < 0.25) {
+            const others = skills.filter(s => s !== skill);
+            if (others.length > 0) {
+                const second = others[Math.floor(Math.random() * others.length)];
+                this.scene.time.delayedCall(600, () => { if (this.alive) this[second](); });
+                this.scene.showCenterText('⚠ BOSS 组合技！', '#ff6644', 1000);
+            }
+        }
+        // v5：地狱 隐藏阶段4 组合技（30% 概率三连击 + 隐藏技 'hellCombo'）
+        if (diffName === '地狱' && Math.random() < 0.35) {
+            const others = skills.filter(s => s !== skill);
+            if (others.length >= 2) {
+                const second = others[Math.floor(Math.random() * others.length)];
+                const third = others.filter(s => s !== second)[Math.floor(Math.random() * (others.length - 1))];
+                this.scene.time.delayedCall(500, () => { if (this.alive) this[second](); });
+                this.scene.time.delayedCall(1100, () => { if (this.alive) this[third](); });
+                this.scene.showCenterText('☠ 地狱三连击！', '#ff0044', 1400);
+                this.scene.cameras.main.shake(300, 0.012);
+            }
+        }
     }
     cleave() {
         const radius = this.phase === 3 ? 200 : (this.phase === 2 ? 160 : 120);
-        this.scene.particles.explosion(this.screenX(), this.screenY(), radius, this.config.color);
-        const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
-            this.scene.playerWorldX, this.scene.playerWorldY);
-        if (d < radius) this.scene.playerTakeDamage(this.damage * 0.9);
-        this.scene.cameras.main.shake(400, 0.02);
+        // v5：招式预告（红圈 1.2 秒后引爆）
+        this.showTelegraph(this.screenX(), this.screenY(), radius, 'circle', 1200, () => {
+            this.scene.particles.explosion(this.screenX(), this.screenY(), radius, this.config.color);
+            const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
+                this.scene.playerWorldX, this.scene.playerWorldY);
+            if (d < radius) this.scene.playerTakeDamage(this.damage * 0.9);
+        });
+    }
+    // v5：招式预告通用方法
+    showTelegraph(x, y, size, shape, delay, callback) {
+        const telegraph = this.scene.add.container(x, y).setDepth(150);
+        let indicator;
+        if (shape === 'circle') {
+            indicator = this.scene.add.circle(0, 0, size, 0xff0000, 0.25);
+            indicator.setStrokeStyle(3, 0xff0000, 0.9);
+        } else if (shape === 'line') {
+            indicator = this.scene.add.rectangle(0, 0, size, 16, 0xff0000, 0.3);
+            indicator.setStrokeStyle(2, 0xff0000, 0.9);
+        } else {
+            indicator = this.scene.add.circle(0, 0, size, 0xff0000, 0.25);
+        }
+        telegraph.add(indicator);
+        // 闪烁动画
+        this.scene.tweens.add({
+            targets: indicator, alpha: { from: 0.25, to: 0.55 },
+            duration: 200, yoyo: true, repeat: Math.floor(delay / 400)
+        });
+        this.scene.time.delayedCall(delay, () => {
+            telegraph.destroy();
+            if (callback) callback();
+        });
     }
     spawnMinions() {
         const count = this.phase === 3 ? 6 : (this.phase === 2 ? 4 : 3);
@@ -1747,25 +2473,40 @@ class Boss {
         const d = Math.sqrt(dx * dx + dy * dy);
         if (d > 0) { this.worldX += (dx / d) * 180; this.worldY += (dy / d) * 180; }
         this.currentSpeed = this.speed * 2;
-        this.scene.cameras.main.shake(300, 0.015);
     }
     aoeAttack() {
         const radius = this.phase === 3 ? 220 : (this.phase === 2 ? 180 : 140);
-        this.scene.particles.explosion(this.screenX(), this.screenY(), radius, this.config.color);
-        const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
-            this.scene.playerWorldX, this.scene.playerWorldY);
-        if (d < radius) this.scene.playerTakeDamage(this.damage * 0.9);
-        this.scene.cameras.main.shake(400, 0.02);
+        this.showTelegraph(this.screenX(), this.screenY(), radius, 'circle', 1000, () => {
+            this.scene.particles.explosion(this.screenX(), this.screenY(), radius, this.config.color);
+            const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
+                this.scene.playerWorldX, this.scene.playerWorldY);
+            if (d < radius) this.scene.playerTakeDamage(this.damage * 0.9);
+        });
     }
     laserBeam() {
         const a = Math.atan2(this.scene.playerWorldY - this.worldY,
             this.scene.playerWorldX - this.worldX);
-        this.scene.particles.lineBeam(this.screenX(), this.screenY(),
-            this.screenX() + Math.cos(a) * 600, this.screenY() + Math.sin(a) * 600,
-            this.config.glowColor, 20);
-        const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
-            this.scene.playerWorldX, this.scene.playerWorldY);
-        if (d < 600) this.scene.playerTakeDamage(this.damage * 0.7);
+        // v5：激光线条预告
+        const telegraphEndX = this.screenX() + Math.cos(a) * 600;
+        const telegraphEndY = this.screenY() + Math.sin(a) * 600;
+        const midX = (this.screenX() + telegraphEndX) / 2;
+        const midY = (this.screenY() + telegraphEndY) / 2;
+        const lineLen = Phaser.Math.Distance.Between(this.screenX(), this.screenY(), telegraphEndX, telegraphEndY);
+        const lineShape = this.scene.add.rectangle(midX, midY, lineLen, 14, 0xff0000, 0.3);
+        lineShape.rotation = a;
+        lineShape.setStrokeStyle(2, 0xff0000, 0.9).setDepth(150);
+        this.scene.tweens.add({
+            targets: lineShape, alpha: { from: 0.3, to: 0.6 },
+            duration: 150, yoyo: true, repeat: 5
+        });
+        this.scene.time.delayedCall(900, () => {
+            lineShape.destroy();
+            this.scene.particles.lineBeam(this.screenX(), this.screenY(),
+                telegraphEndX, telegraphEndY, this.config.glowColor, 20);
+            const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
+                this.scene.playerWorldX, this.scene.playerWorldY);
+            if (d < 600) this.scene.playerTakeDamage(this.damage * 0.7);
+        });
     }
     enrage() { this.speed *= 1.2; this.damage = Math.floor(this.damage * 1.15); }
     summonGoblins() { this.spawnMinions(); }
@@ -1859,7 +2600,6 @@ class Boss {
         this.worldX = this.scene.playerWorldX + (Math.random() - 0.5) * 200;
         this.worldY = this.scene.playerWorldY + (Math.random() - 0.5) * 200;
         this.scene.particles.spawnEffect(this.screenX(), this.screenY(), 0x88ffff);
-        this.scene.cameras.main.shake(300, 0.015);
     }
     summonShadow() { this.spawnMinions(); }
     fireWave() {
@@ -1895,7 +2635,6 @@ class Boss {
         }
     }
     earthquake() {
-        this.scene.cameras.main.shake(800, 0.03);
         for (let i = 0; i < 12; i++) {
             const a = (i / 12) * Math.PI * 2;
             this.scene.particles.explosion(this.screenX() + Math.cos(a) * 200,
@@ -1925,7 +2664,6 @@ class Boss {
             this.scene.particles.explosion(GW / 2 + Math.cos(a) * r,
                 GH / 2 + Math.sin(a) * r, 70, 0x440088);
         }
-        this.scene.cameras.main.shake(500, 0.02);
     }
     summonClones() { this.illusion(); }
     shadowStorm() {
@@ -1967,7 +2705,7 @@ class Boss {
                     this.damage * 0.8, 'meteor', { speed: 700, color: 0xff00ff, size: 14 }));
             }, i * 80);
         }
-        this.scene.cameras.main.shake(2000, 0.025);
+        this.scene.cameras.main.shake(2000, 0.015);
         this.scene.showCenterText('湮灭！', '#ff0000');
     }
     checkPlayerCollision() {
@@ -1987,14 +2725,98 @@ class Boss {
         this.hp -= amount; this.updateHpBar();
         this.scene.showDamageNumber(this.screenX(), this.screenY() - 50, amount, isCrit);
         if (isCrit) this.scene.particles.critEffect(this.screenX(), this.screenY() - 40);
+        // 骷髅领主：HP低于50%/25%时分裂（仅本体，克隆体/幻影不再触发，避免无限分裂）
+        if (this.config.id === 'sl' && this.hp > 0 && !this._isClone && !this._isPhantom) {
+            if (this.hp <= this.maxHp * 0.5 && !this._split1) {
+                this._split1 = true;
+                this.splitInto(2, 0.5);
+            }
+            if (this.hp <= this.maxHp * 0.25 && !this._split2) {
+                this._split2 = true;
+                this.splitInto(4, 0.25);
+            }
+        }
+        // 暗影神：HP低于75%/50%/25%时召唤前序BOSS幻影（仅本体）
+        if (this.config.id === 'sg' && this.hp > 0 && !this._isClone && !this._isPhantom) {
+            if (this.hp <= this.maxHp * 0.75 && !this._phantom1) {
+                this._phantom1 = true;
+                this.summonPhantomBoss('gk');
+            }
+            if (this.hp <= this.maxHp * 0.5 && !this._phantom2) {
+                this._phantom2 = true;
+                this.summonPhantomBoss('ts');
+            }
+            if (this.hp <= this.maxHp * 0.25 && !this._phantom3) {
+                this._phantom3 = true;
+                this.summonPhantomBoss('el');
+            }
+        }
         this.scene.tweens.add({
             targets: this.container,
             x: this.screenX() + (Math.random() - 0.5) * 8,
             y: this.screenY() + (Math.random() - 0.5) * 8,
             duration: 50, yoyo: true, ease: 'Cubic.easeOut'
         });
-        if (this.hp <= 0) { this.die(); return true; }
+        // v5：多血条系统——打完一条进入下一条
+        if (this.hp <= 0) {
+            if (this.currentBar < this.totalBars) {
+                this.currentBar++;
+                this.hp = this.perBarHp;
+                this.maxHp = this.perBarHp;
+                // 阶段升级（每 1/3 血条数升级一次）
+                const newPhase = Math.min(3, Math.ceil((this.currentBar / this.totalBars) * 3));
+                if (newPhase > this.phase) {
+                    this.phase = newPhase;
+                    this.speed *= 1.15;
+                    this.specialCooldown = Math.max(1200, this.specialCooldown * 0.85);
+                }
+                // 破段特效
+                this.scene.cameras.main.flash(300, 255, 100, 50);
+                this.scene.cameras.main.shake(400, 0.012);
+                this.scene.particles.explosion(this.screenX(), this.screenY(), 180, this.config.glowColor);
+                this.showPhaseText(`血条 ${this.currentBar}/${this.totalBars}`, '#ffaa00');
+                // 破段时召唤小怪（阶段2+）
+                if (this.phase >= 2) this.spawnMinions();
+            } else {
+                this.die();
+                return true;
+            }
+        }
         return false;
+    }
+    splitInto(count, hpRatio) {
+        for (let i = 0; i < count; i++) {
+            const cloneCfg = Object.assign({}, this.config, { size: this.config.size * 0.7 });
+            const clone = new Boss(this.scene, this.config.id);
+            clone.config = cloneCfg;
+            clone.spawn(0.5, 1);
+            clone.hp = Math.floor(this.maxHp * hpRatio);
+            clone.maxHp = clone.hp;
+            clone._isClone = true;
+            const angle = (i / count) * Math.PI * 2;
+            clone.worldX = this.worldX + Math.cos(angle) * 60;
+            clone.worldY = this.worldY + Math.sin(angle) * 60;
+            this.scene.bossManager.phantoms = this.scene.bossManager.phantoms || [];
+            this.scene.bossManager.phantoms.push(clone);
+        }
+        this.scene.showCenterText('分裂！', '#ff4444');
+    }
+    summonPhantomBoss(bossId) {
+        const origConfig = BossConfigs.find(b => b.id === bossId);
+        if (!origConfig) return;
+        const config = Object.assign({}, origConfig, { size: origConfig.size * 0.7 });
+        const phantom = new Boss(this.scene, config.id);
+        phantom.config = config;
+        phantom.spawn(0.5, 1);
+        phantom.hp = Math.floor(origConfig.hp * 0.5);
+        phantom.maxHp = phantom.hp;
+        phantom._isPhantom = true;
+        const angle = Math.random() * Math.PI * 2;
+        phantom.worldX = this.worldX + Math.cos(angle) * 150;
+        phantom.worldY = this.worldY + Math.sin(angle) * 150;
+        this.scene.bossManager.phantoms = this.scene.bossManager.phantoms || [];
+        this.scene.bossManager.phantoms.push(phantom);
+        this.scene.showCenterText(`${config.name}的幻影出现！`, '#aa44ff');
     }
     applySlow(d, amount = 0.4) {
         this.slowed = Math.max(this.slowed || 0, d);
@@ -2016,15 +2838,44 @@ class Boss {
         this.hpBar.scaleX = ratio; this.hpBarGlow.scaleX = ratio;
         if (ratio < 0.3) this.hpBar.fillColor = 0xff0000;
         else if (ratio < 0.6) this.hpBar.fillColor = 0xff8800;
+        // v5：分段指示器（■■■□□□）
+        if (this.barSegmentsText && this.totalBars) {
+            let seg = '';
+            for (let i = 1; i <= this.totalBars; i++) {
+                seg += i < this.currentBar ? '■' : (i === this.currentBar ? '◆' : '□');
+            }
+            this.barSegmentsText.setText(`${seg}  ${this.currentBar}/${this.totalBars}`);
+        }
     }
     die() {
         this.alive = false;
+        // 清除深渊魔王的减速效果
+        if (this.config.id === 'ab') {
+            this.scene.runtime.slowEffect = 0;
+            this.scene.runtime.slowTimer = 0;
+        }
         const cfg = this.config;
+        // 分裂体/幻影：简化死亡，不触发主BOSS奖励与剧情流程
+        if (this._isClone || this._isPhantom) {
+            this.scene.runtime.addGold(Math.floor(cfg.gold * 0.3));
+            this.scene.runtime.addExp(Math.floor(cfg.exp * 0.3));
+            this.scene.particles.explosion(this.screenX(), this.screenY(), 60, cfg.glowColor);
+            this.scene.tweens.add({
+                targets: this.container,
+                alpha: 0, scale: 0, duration: 500, ease: 'Cubic.easeIn',
+                onComplete: () => { if (this.container) this.container.destroy(); }
+            });
+            if (this.hpBar) this.hpBar.destroy();
+            if (this.hpBarBg) this.hpBarBg.destroy();
+            if (this.hpBarGlow) this.hpBarGlow.destroy();
+            if (this.nameText) this.nameText.destroy();
+            this.hpBar = null; this.hpBarBg = null; this.hpBarGlow = null; this.nameText = null;
+            return;
+        }
         this.scene.runtime.bossKills++;
         this.scene.runtime.addGold(cfg.gold);
         const lv = this.scene.runtime.addExp(cfg.exp);
         this.scene.particles.bossDefeat(this.screenX(), this.screenY());
-        this.scene.cameras.main.shake(1200, 0.015);
         const lootPool = ['health', 'health', 'exp_big', 'exp_big', 'element_shard', 'element_shard', 'arcane_dust', 'element_crystal'];
         for (let i = 0; i < 8; i++) {
             const a = Math.random() * Math.PI * 2, d = 60 + Math.random() * 80;
@@ -2037,6 +2888,17 @@ class Boss {
         if (this.bossLevel > this.scene.saveData.highestBoss)
             this.scene.saveData.highestBoss = this.bossLevel;
         this.scene.time.delayedCall(1500, () => { this.scene.showBossReward(); });
+        // BOSS击杀后显示剧情对话
+        const chapter = STORY_CHAPTERS[this.scene.runtime.currentRegion];
+        if (chapter) {
+            const npcKey = Object.keys(chapter.npcDialogues)[0];
+            const dialogues = chapter.npcDialogues[npcKey];
+            if (dialogues.afterBoss) {
+                this.scene.time.delayedCall(2000, () => {
+                    this.scene.showStoryDialogue(dialogues.afterBoss);
+                });
+            }
+        }
         this.scene.tweens.add({
             targets: this.container,
             alpha: 0, scale: 0, duration: 800, ease: 'Cubic.easeIn',
@@ -2089,6 +2951,11 @@ class RuntimeData {
         this.stunTimer = 0;
         this.controlImmuneTimer = 0;
         this.currentChapter = -1;
+        this.currentRegion = 0; // 当前区域ID
+        this.regionCleared = [false, false, false, false, false]; // 区域是否已通关
+        this.questProgress = 0; // 当前任务进度
+        this.questCompleted = false; // 当前任务是否完成
+        this.storyFlags = {}; // 剧情标志
         this.difficulty = 1.0;
         this.difficultyName = '普通';
         this.gameSpeed = 1.0;
@@ -2102,6 +2969,9 @@ class RuntimeData {
         this.bonusStats = {};
         this.elements = { shard: 0, dust: 0, crystal: 0 };
         this.weaponPromotions = { sword: 0, axe: 0, staff: 0, bow: 0, wand: 0 };
+        this.secondaryWeapon = null; // 副武器类型，null表示无副武器
+        this.weaponSkills = {}; // 每武器的技能槽选择 { sword: [null, null, null], ... }
+        this.fusedWeapon = null; // 合成武器
         Specializations.forEach(s => this.specLevels[s.id] = 0);
     }
 
@@ -2136,13 +3006,15 @@ class RuntimeData {
 
     addExp(amount) {
         const sp = this.spec;
-        const actual = Math.floor(amount * (1 + (sp.exp || 0)));
+        // v5 智者加点：每级 +10% 经验获取
+        const sageBonus = this._wisdomLv ? 0.10 * this._wisdomLv : 0;
+        const actual = Math.floor(amount * (1 + (sp.exp || 0) + sageBonus));
         this.exp += actual;
         let leveled = false;
         while (this.exp >= this.expToNext) {
             this.exp -= this.expToNext;
             this.level++;
-            this.expToNext = Math.floor(60 * Math.pow(1.35, this.level - 1));
+            this.expToNext = Math.floor(80 * Math.pow(1.45, this.level - 1));
             leveled = true;
         }
         return leveled;
@@ -2158,6 +3030,8 @@ class RuntimeData {
     takeDamage(amount) {
         const sp = this.spec;
         let dmg = amount * (1 - (sp.armor || 0) * 0.15);
+        // v5 铁壁加点：每级 8% 减伤
+        if (this._vitalityLv) dmg *= (1 - 0.08 * this._vitalityLv);
         dmg = Math.max(1, Math.floor(dmg));
         if (this.shield > 0) {
             const absorb = Math.min(this.shield, dmg);
@@ -2165,6 +3039,20 @@ class RuntimeData {
             dmg -= absorb;
         }
         this.hp -= dmg;
+        // v5 不朽加点：HP 归零时复活（每场一次，每级 +1 次数）
+        if (this.hp <= 0 && this._immortalLv && (this._reviveCharges || 0) > 0) {
+            this._reviveCharges--;
+            this.hp = Math.floor(this.maxHp * (0.3 + 0.1 * this._immortalLv));
+            this.shield = (this.shield || 0) + 80;
+            this.invincibleTimer = Math.max(this.invincibleTimer || 0, 2000);
+            if (this._scene) {
+                this._scene.cameras.main.flash(400, 255, 240, 200);
+                this._scene.particles.explosion(GW / 2, GH / 2, 50, 0xffcc66);
+                this._scene.showCenterText('✦ 不朽复活 ✦', '#ffcc66', 1500);
+                this._scene.audio && this._scene.audio.play('levelup');
+            }
+            return 0;
+        }
         return dmg;
     }
 
@@ -2176,10 +3064,18 @@ class RuntimeData {
 
     updateMaxHp() {
         const sp = this.spec;
-        const newMax = (100 + (sp.maxHp || 0) * 18) * (this.hpMult || 1);
+        let newMax = (100 + (sp.maxHp || 0) * 18) * (this.hpMult || 1);
+        // 体魄加点：每级 +15% 最大生命
+        if (this._vitalityLv) newMax *= (1 + 0.15 * this._vitalityLv);
         const diff = newMax - this.maxHp;
         this.maxHp = newMax;
         if (diff > 0) this.hp += diff;
+        // v5 铁壁加点：每级 +25 永久护盾上限（开局获得）
+        if (this._vitalityLv && this._ironwallShieldApplied !== this._vitalityLv) {
+            const add = 25 * this._vitalityLv;
+            this.shield = (this.shield || 0) + add - (this._ironwallShieldApplied ? 25 * this._ironwallShieldApplied : 0);
+            this._ironwallShieldApplied = this._vitalityLv;
+        }
     }
 
     addCombo() {
@@ -2320,6 +3216,17 @@ class BossManager {
             }
         }
         if (this.boss && this.boss.alive) this.boss.update(delta, gameTime);
+        // 更新幻影/分裂体
+        if (this.phantoms) {
+            for (let i = this.phantoms.length - 1; i >= 0; i--) {
+                const p = this.phantoms[i];
+                if (p.alive) {
+                    p.update(delta, gameTime);
+                } else {
+                    this.phantoms.splice(i, 1);
+                }
+            }
+        }
     }
     getNextBossTime() {
         if (this.currentBossIndex < BossConfigs.length) {
@@ -2352,9 +3259,62 @@ class BossManager {
             targets: [warning, bossName], alpha: { from: 0, to: 1, to: 0, to: 1, to: 0, to: 1 },
             scale: { from: 0.5, to: 1.3, to: 1, to: 1.3, to: 0.9, to: 1 },
             duration: 3000, ease: 'Cubic.easeInOut',
-            onComplete: () => { warning.destroy(); bossName.destroy(); bg.destroy(); this.spawnBoss(); }
+            onComplete: () => {
+                warning.destroy(); bossName.destroy(); bg.destroy();
+                this.showBossIntro(cfg, () => { this.spawnBoss(); });
+            }
         });
-        this.scene.cameras.main.shake(3000, 0.012);
+        this.scene.cameras.main.shake(3000, 0.008);
+    }
+    showBossIntro(bossConfig, callback) {
+        // 屏幕渐暗
+        const fade = this.scene.add.rectangle(0, 0, GW, GH, 0x000000, 0)
+            .setOrigin(0, 0).setDepth(2000);
+        this.scene.tweens.add({
+            targets: fade,
+            alpha: 0.7,
+            duration: 500,
+            onComplete: () => {
+                // 显示BOSS信息
+                const title = this.scene.add.text(GW / 2, GH / 2 - 60, bossConfig.name, {
+                    fontSize: '36px', fill: '#' + bossConfig.color.toString(16).padStart(6, '0'),
+                    stroke: '#000000', strokeThickness: 4
+                }).setOrigin(0.5).setDepth(2001);
+                const desc = this.scene.add.text(GW / 2, GH / 2, bossConfig.desc, {
+                    fontSize: '18px', fill: '#cccccc'
+                }).setOrigin(0.5).setDepth(2001);
+                // BOSS台词
+                const quotes = {
+                    'gk': '我的金币...都是我的！',
+                    'sl': '死亡的军团...永不休止。',
+                    'sd': '你...也来挑战天空了吗？',
+                    'ab': '深渊...会吞噬一切。',
+                    'ts': '时间...在你手中流逝。',
+                    'el': '元素...服从于我。',
+                    'vp': '我看见了...你的命运。',
+                    'sg': '你...终于回来了。'
+                };
+                const quote = this.scene.add.text(GW / 2, GH / 2 + 40, quotes[bossConfig.id] || '...', {
+                    fontSize: '16px', fill: '#ffaa44', fontStyle: 'italic'
+                }).setOrigin(0.5).setDepth(2001);
+                // 3秒后渐亮，开始战斗
+                this.scene.time.delayedCall(3000, () => {
+                    this.scene.tweens.add({
+                        targets: [fade, title, desc, quote],
+                        alpha: 0,
+                        duration: 500,
+                        onComplete: () => {
+                            fade.destroy(); title.destroy(); desc.destroy(); quote.destroy();
+                            if (callback) callback();
+                        }
+                    });
+                });
+            }
+        });
+    }
+    get alivePhantoms() {
+        if (!this.phantoms) return [];
+        return this.phantoms.filter(p => p.alive);
     }
     spawnBoss() {
         this.warningActive = false;
@@ -2376,6 +3336,10 @@ class BossManager {
             if (this.boss.container) this.boss.container.destroy();
             this.boss = null;
         }
+        if (this.phantoms) {
+            this.phantoms.forEach(p => { if (p.container) p.container.destroy(); });
+            this.phantoms = [];
+        }
         this.currentBossIndex = 0;
         this.warningActive = false;
         this.bossDefeated = false;
@@ -2385,6 +3349,364 @@ class BossManager {
 // ==================== 主游戏场景 ====================
 class GameScene extends Phaser.Scene {
     constructor() { super('Game'); }
+
+    preload() {
+        // 程序化生成 8 种 BOSS 像素艺术纹理（无需网络，离线可用，每只 BOSS 剪影唯一）
+        this.generateBossTextures();
+        // 加载小怪精灵表（CC0/CC-BY，来自 Kenney & Enemy Galore）
+        // 6 种 64x64 帧：slime/bat/skeleton/ghost/gargoyle/demon
+        ['slime', 'bat', 'skeleton', 'ghost', 'gargoyle', 'demon'].forEach(type => {
+            ['idle', 'run', 'attack', 'hit', 'death'].forEach(anim => {
+                this.load.spritesheet(`${type}_${anim}`, `assets/sprites/${type}_${anim}.png`, { frameWidth: 64, frameHeight: 64 });
+            });
+        });
+        // archer 用 32x32 帧（Canine 系列尺寸不同）
+        ['idle', 'run', 'attack', 'hit', 'death'].forEach(anim => {
+            this.load.spritesheet(`archer_${anim}`, `assets/sprites/archer_${anim}.png`, { frameWidth: 32, frameHeight: 32 });
+        });
+        this.load.on('loaderror', (file) => { console.warn('精灵加载失败:', file.key); });
+    }
+
+    // 创建小怪动画（在 create() 中调用一次）
+    createEnemyAnimations() {
+        if (this._enemyAnimsCreated) return;
+        this._enemyAnimsCreated = true;
+        const types = ['slime', 'bat', 'skeleton', 'ghost', 'gargoyle', 'demon', 'archer'];
+        types.forEach(type => {
+            // idle - 循环
+            if (this.textures.exists(`${type}_idle`)) {
+                this.anims.create({ key: `${type}_idle`, frames: this.anims.generateFrameNumbers(`${type}_idle`), frameRate: 8, repeat: -1 });
+            }
+            // run - 循环
+            if (this.textures.exists(`${type}_run`)) {
+                this.anims.create({ key: `${type}_run`, frames: this.anims.generateFrameNumbers(`${type}_run`), frameRate: 10, repeat: -1 });
+            }
+            // attack - 单次
+            if (this.textures.exists(`${type}_attack`)) {
+                this.anims.create({ key: `${type}_attack`, frames: this.anims.generateFrameNumbers(`${type}_attack`), frameRate: 12, repeat: 0 });
+            }
+            // hit - 单次
+            if (this.textures.exists(`${type}_hit`)) {
+                this.anims.create({ key: `${type}_hit`, frames: this.anims.generateFrameNumbers(`${type}_hit`), frameRate: 12, repeat: 0 });
+            }
+            // death - 单次
+            if (this.textures.exists(`${type}_death`)) {
+                this.anims.create({ key: `${type}_death`, frames: this.anims.generateFrameNumbers(`${type}_death`), frameRate: 12, repeat: 0 });
+            }
+        });
+    }
+
+    // 程序化生成 BOSS 像素纹理。用 Canvas API 在 96x96 画布上绘制独特剪影。
+    generateBossTextures() {
+        const SIZE = 96;
+        const PALETTES = {
+            gk: { body: 0x4a8a3a, dark: 0x2a5a1f, light: 0x6aaa50, accent: 0xffd700, eye: 0xffcc00, glow: 0xff8800 },
+            sl: { body: 0xe8e8d0, dark: 0x888870, light: 0xffffee, accent: 0xaaaa88, eye: 0xff2200, glow: 0xff4422 },
+            sd: { body: 0x4a2a6a, dark: 0x2a0a3a, light: 0x6a4a8a, accent: 0x88ff66, eye: 0x66ff44, glow: 0x44cc88 },
+            ab: { body: 0xaa2a1a, dark: 0x660a0a, light: 0xcc4a2a, accent: 0x220000, eye: 0xffaa00, glow: 0xff4400 },
+            ts: { body: 0x2a4a8a, dark: 0x0a1a4a, light: 0x4a6aaa, accent: 0x88ccff, eye: 0xccffff, glow: 0x66aaff },
+            el: { body: 0x6a4a2a, dark: 0x2a1a0a, light: 0x8a6a4a, accent: 0xffffff, eye: 0xffffff, glow: 0xffffff },
+            vp: { body: 0x3a1a5a, dark: 0x1a0a2a, light: 0x5a3a7a, accent: 0xaa66ff, eye: 0xff66ff, glow: 0xaa44ff },
+            sg: { body: 0x0a0a14, dark: 0x000000, light: 0x2a2a3a, accent: 0xff2200, eye: 0xff4400, glow: 0xff6600 }
+        };
+        const ctx = (id) => {
+            const tex = this.textures.createCanvas('boss_' + id, SIZE, SIZE);
+            return tex.getContext();
+        };
+        const hex = (c) => '#' + c.toString(16).padStart(6, '0');
+        const rect = (c, x, y, w, h, color) => { c.fillStyle = hex(color); c.fillRect(x, y, w, h); };
+        const circle = (c, x, y, r, color) => { c.fillStyle = hex(color); c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); };
+        const px = (c, x, y, color) => rect(c, x, y, 1, 1, color); // 单像素
+        const fillAll = (c, color) => { c.fillStyle = hex(color); c.fillRect(0, 0, SIZE, SIZE); };
+
+        // 通用：以像素方块绘制（每个"像素"=3x3 实际像素，32x32 网格）
+        const CELL = 3;
+        const G = 32;
+        const pxg = (c, gx, gy, color) => { if (gx<0||gx>=G||gy<0||gy>=G) return; rect(c, gx*CELL, gy*CELL, CELL, CELL, color); };
+        // 在网格上画一条线 (Bresenham 简化版)
+        const lineG = (c, x0, y0, x1, y1, color) => {
+            const dx = Math.abs(x1-x0), dy = Math.abs(y1-y0);
+            const sx = x0<x1?1:-1, sy = y0<y1?1:-1;
+            let err = dx-dy, x = x0, y = y0;
+            while (true) {
+                pxg(c, x, y, color);
+                if (x===x1 && y===y1) break;
+                const e2 = 2*err;
+                if (e2 > -dy) { err -= dy; x += sx; }
+                if (e2 < dx) { err += dx; y += sy; }
+            }
+        };
+        // 在网格上画填充圆
+        const discG = (c, cx, cy, r, color) => {
+            for (let y=-r; y<=r; y++) for (let x=-r; x<=r; x++) {
+                if (x*x + y*y <= r*r) pxg(c, cx+x, cy+y, color);
+            }
+        };
+        // 网格圆环
+        const ringG = (c, cx, cy, r, color) => {
+            for (let y=-r; y<=r; y++) for (let x=-r; x<=r; x++) {
+                const d2 = x*x + y*y;
+                if (d2 <= r*r && d2 > (r-1)*(r-1)) pxg(c, cx+x, cy+y, color);
+            }
+        };
+
+        // ===== gk 哥布林王：绿色身体 + 金王冠 + 獠牙 =====
+        {
+            const c = ctx('gk'); const p = PALETTES.gk;
+            fillAll(c, 0x000000);
+            // 王冠（金色，5个尖）
+            for (let i=0; i<5; i++) { const cx = 10 + i*3; pxg(c, cx, 6, p.accent); pxg(c, cx, 7, p.accent); pxg(c, cx, 8, p.accent); }
+            for (let x=10; x<=22; x++) pxg(c, x, 9, p.accent);
+            // 头部（绿色圆盘）
+            discG(c, 16, 16, 6, p.body);
+            discG(c, 16, 16, 6, p.body);
+            // 眼睛
+            pxg(c, 13, 15, p.eye); pxg(c, 14, 15, p.eye);
+            pxg(c, 18, 15, p.eye); pxg(c, 19, 15, p.eye);
+            // 獠牙
+            pxg(c, 14, 19, 0xffffff); pxg(c, 18, 19, 0xffffff);
+            // 耳朵（尖）
+            lineG(c, 10, 14, 6, 12, p.body); lineG(c, 22, 14, 26, 12, p.body);
+            // 身体（深绿）
+            discG(c, 16, 26, 7, p.dark);
+            rect(c, 11*CELL, 26*CELL, 10*CELL, 4*CELL, p.body);
+            // 爪子
+            for (let y=27; y<30; y++) { pxg(c, 8, y, p.dark); pxg(c, 24, y, p.dark); }
+            // 阴影/高光
+            for (let i=0; i<5; i++) pxg(c, 12+i, 22, p.light);
+        }
+
+        // ===== sl 骷髅领主：白骷髅头 + 红眼窝 + 骨十字 =====
+        {
+            const c = ctx('sl'); const p = PALETTES.sl;
+            fillAll(c, 0x000000);
+            // 头骨
+            discG(c, 16, 14, 7, p.body);
+            // 眼窝（黑色 + 红光）
+            discG(c, 13, 13, 2, 0x000000);
+            discG(c, 19, 13, 2, 0x000000);
+            pxg(c, 13, 13, p.eye); pxg(c, 19, 13, p.eye);
+            // 鼻孔
+            pxg(c, 16, 16, 0x000000);
+            // 牙齿
+            for (let i=0; i<5; i++) { pxg(c, 13+i, 19, p.light); pxg(c, 13+i, 20, p.dark); }
+            // 骨十字（脊柱）
+            for (let y=22; y<30; y++) pxg(c, 16, y, p.body);
+            for (let x=12; x<=20; x++) pxg(c, x, 24, p.body);
+            // 肋骨（小线段）
+            for (let i=0; i<3; i++) { lineG(c, 14, 25+i*2, 18, 25+i*2, p.dark); }
+            // 骨盆/腿骨
+            lineG(c, 16, 30, 13, 31, p.body); lineG(c, 16, 30, 19, 31, p.body);
+        }
+
+        // ===== sd 暗影龙：紫色龙首 + 张开的双翼 =====
+        {
+            const c = ctx('sd'); const p = PALETTES.sd;
+            fillAll(c, 0x000000);
+            // 左翼（三角形）
+            for (let y=10; y<22; y++) {
+                const len = Math.floor((y - 10) * 0.8);
+                for (let x = 0; x <= len; x++) pxg(c, 8 - x, y, p.dark);
+            }
+            // 右翼
+            for (let y=10; y<22; y++) {
+                const len = Math.floor((y - 10) * 0.8);
+                for (let x = 0; x <= len; x++) pxg(c, 24 + x, y, p.dark);
+            }
+            // 翼骨高光
+            lineG(c, 8, 12, 2, 20, p.body);
+            lineG(c, 24, 12, 30, 20, p.body);
+            // 龙首（中央）
+            discG(c, 16, 18, 6, p.body);
+            // 龙吻（向前突出）
+            rect(c, 16*CELL, 18*CELL, 4*CELL, 3*CELL, p.body);
+            // 角（向后弯）
+            lineG(c, 12, 12, 9, 7, p.light); lineG(c, 20, 12, 23, 7, p.light);
+            // 眼睛（绿色发光）
+            pxg(c, 14, 17, p.eye); pxg(c, 15, 17, p.eye);
+            // 牙
+            pxg(c, 19, 20, 0xffffff); pxg(c, 20, 20, 0xffffff);
+            // 颈部
+            rect(c, 13*CELL, 23*CELL, 6*CELL, 5*CELL, p.dark);
+            // 鳞片高光
+            pxg(c, 13, 22, p.light); pxg(c, 19, 22, p.light);
+        }
+
+        // ===== ab 深渊魔王：红皮肤 + 黑角 + 健壮身体 =====
+        {
+            const c = ctx('ab'); const p = PALETTES.ab;
+            fillAll(c, 0x000000);
+            // 左角（黑色，弯曲）
+            lineG(c, 12, 10, 8, 4, p.accent); lineG(c, 11, 10, 7, 5, p.accent);
+            // 右角
+            lineG(c, 20, 10, 24, 4, p.accent); lineG(c, 21, 10, 25, 5, p.accent);
+            // 头部
+            discG(c, 16, 14, 6, p.body);
+            // 角根部高光
+            pxg(c, 12, 11, p.light); pxg(c, 20, 11, p.light);
+            // 眼睛（橙黄）
+            pxg(c, 13, 13, p.eye); pxg(c, 19, 13, p.eye);
+            // 嘴 + 獠牙
+            for (let x=13; x<=19; x++) pxg(c, x, 18, p.dark);
+            pxg(c, 14, 19, 0xffffff); pxg(c, 18, 19, 0xffffff);
+            // 身体（肌肉，宽）
+            discG(c, 16, 25, 7, p.body);
+            rect(c, 10*CELL, 23*CELL, 12*CELL, 6*CELL, p.body);
+            // 肌肉分隔
+            lineG(c, 16, 22, 16, 30, p.dark);
+            // 手臂
+            for (let y=22; y<28; y++) { pxg(c, 8, y, p.dark); pxg(c, 24, y, p.dark); }
+            // 爪
+            pxg(c, 7, 28, p.dark); pxg(c, 25, 28, p.dark);
+            // 火光高光
+            pxg(c, 12, 23, p.light); pxg(c, 20, 23, p.light);
+        }
+
+        // ===== ts 时空守护者：蓝色钟环 + 指针 + 中心眼 =====
+        {
+            const c = ctx('ts'); const p = PALETTES.ts;
+            fillAll(c, 0x000000);
+            // 外环
+            ringG(c, 16, 16, 12, p.body);
+            ringG(c, 16, 16, 11, p.light);
+            // 钟面刻度（12 3 6 9 点位置）
+            for (let i=0; i<12; i++) {
+                const a = (i/12) * Math.PI * 2 - Math.PI/2;
+                const x1 = Math.round(16 + Math.cos(a) * 9);
+                const y1 = Math.round(16 + Math.sin(a) * 9);
+                const x2 = Math.round(16 + Math.cos(a) * 10);
+                const y2 = Math.round(16 + Math.sin(a) * 10);
+                lineG(c, x1, y1, x2, y2, i % 3 === 0 ? p.accent : p.dark);
+            }
+            // 时针（指向上）
+            lineG(c, 16, 16, 16, 9, p.accent);
+            // 分针（指向右）
+            lineG(c, 16, 16, 23, 16, p.accent);
+            // 中心圆
+            discG(c, 16, 16, 3, p.body);
+            discG(c, 16, 16, 2, p.eye);
+            // 中心瞳孔
+            pxg(c, 16, 16, 0x000000);
+            // 外发光小点
+            for (let i=0; i<8; i++) {
+                const a = (i/8) * Math.PI * 2;
+                const x = Math.round(16 + Math.cos(a) * 14);
+                const y = Math.round(16 + Math.sin(a) * 14);
+                pxg(c, x, y, p.glow);
+            }
+        }
+
+        // ===== el 元素领主：四象限四色（火/冰/雷/地）+ 中心宝石 =====
+        {
+            const c = ctx('el'); const p = PALETTES.el;
+            fillAll(c, 0x000000);
+            // 四个象限颜色
+            const FIRE = 0xff4400, ICE = 0x44aaff, LIGHTNING = 0xffee00, EARTH = 0x88ff44;
+            // 左上 火
+            for (let y=4; y<16; y++) for (let x=4; x<16; x++) {
+                const d = Math.sqrt((x-10)**2 + (y-10)**2);
+                if (d < 7) pxg(c, x, y, FIRE);
+            }
+            // 右上 冰
+            for (let y=4; y<16; y++) for (let x=16; x<28; x++) {
+                const d = Math.sqrt((x-22)**2 + (y-10)**2);
+                if (d < 7) pxg(c, x, y, ICE);
+            }
+            // 左下 地
+            for (let y=16; y<28; y++) for (let x=4; x<16; x++) {
+                const d = Math.sqrt((x-10)**2 + (y-22)**2);
+                if (d < 7) pxg(c, x, y, EARTH);
+            }
+            // 右下 雷
+            for (let y=16; y<28; y++) for (let x=16; x<28; x++) {
+                const d = Math.sqrt((x-22)**2 + (y-22)**2);
+                if (d < 7) pxg(c, x, y, LIGHTNING);
+            }
+            // 中央宝石（白色）
+            discG(c, 16, 16, 4, 0xffffff);
+            discG(c, 16, 16, 3, p.eye);
+            // 四角小宝石
+            pxg(c, 16, 8, FIRE); pxg(c, 16, 24, EARTH);
+            pxg(c, 8, 16, ICE); pxg(c, 24, 16, LIGHTNING);
+            // 高光
+            pxg(c, 15, 15, 0xffffff);
+        }
+
+        // ===== vp 虚空先知：紫色兜帽 + 独眼 =====
+        {
+            const c = ctx('vp'); const p = PALETTES.vp;
+            fillAll(c, 0x000000);
+            // 兜帽外轮廓（深紫三角）
+            for (let y=8; y<26; y++) {
+                const halfW = Math.max(1, Math.floor((y - 8) * 0.6));
+                for (let x = 16-halfW; x <= 16+halfW; x++) pxg(c, x, y, p.dark);
+            }
+            // 兜帽内（更深的阴影）
+            for (let y=12; y<22; y++) {
+                const halfW = Math.max(1, Math.floor((y - 12) * 0.4));
+                for (let x = 16-halfW; x <= 16+halfW; x++) pxg(c, x, y, p.body);
+            }
+            // 兜帽尖
+            lineG(c, 16, 8, 16, 4, p.dark);
+            // 独眼（大紫红发光）
+            discG(c, 16, 17, 3, p.eye);
+            discG(c, 16, 17, 2, 0xffffff);
+            pxg(c, 16, 17, 0x000000);
+            // 兜帽边缘高光
+            lineG(c, 11, 22, 16, 26, p.light);
+            lineG(c, 21, 22, 16, 26, p.light);
+            // 飘动符文（点）
+            pxg(c, 10, 14, p.accent); pxg(c, 22, 14, p.accent);
+            pxg(c, 9, 18, p.glow); pxg(c, 23, 18, p.glow);
+            // 下方袍子下摆
+            for (let y=26; y<30; y++) {
+                const halfW = Math.max(1, Math.floor((y - 26) * 0.8) + 5);
+                for (let x = 16-halfW; x <= 16+halfW; x++) pxg(c, x, y, p.dark);
+            }
+        }
+
+        // ===== sg 暗影神：黑团 + 多眼 + 红光环 =====
+        {
+            const c = ctx('sg'); const p = PALETTES.sg;
+            fillAll(c, 0x000000);
+            // 外层红光环（环）
+            ringG(c, 16, 16, 14, 0x440000);
+            ringG(c, 16, 16, 13, 0x660000);
+            // 主体黑团（不规则）
+            discG(c, 16, 16, 11, p.body);
+            // 黑团边缘有暗紫噪声
+            for (let i=0; i<20; i++) {
+                const a = (i/20) * Math.PI * 2;
+                const r = 11 + Math.floor(Math.sin(i*1.3) * 1);
+                const x = Math.round(16 + Math.cos(a) * r);
+                const y = Math.round(16 + Math.sin(a) * r);
+                pxg(c, x, y, p.light);
+            }
+            // 多只眼睛（6 只，红色）
+            const eyes = [[12,11],[20,11],[10,16],[22,16],[14,21],[18,21],[16,16]];
+            for (const [ex, ey] of eyes) {
+                pxg(c, ex, ey, p.eye);
+                pxg(c, ex+1, ey, p.eye);
+                pxg(c, ex, ey+1, 0xffffff);
+            }
+            // 中心眼更大
+            discG(c, 16, 16, 2, p.eye);
+            pxg(c, 16, 16, 0x000000);
+            // 顶部火焰
+            lineG(c, 16, 5, 14, 1, p.glow);
+            lineG(c, 16, 5, 18, 1, p.glow);
+            // 底部触手
+            lineG(c, 12, 27, 10, 31, p.body);
+            lineG(c, 16, 28, 16, 31, p.body);
+            lineG(c, 20, 27, 22, 31, p.body);
+        }
+
+        // 刷新所有 canvas 纹理
+        for (const id in PALETTES) {
+            const tex = this.textures.get('boss_' + id);
+            if (tex && tex.refresh) tex.refresh();
+        }
+    }
 
     create() {
         this.saveData = SaveData.load();
@@ -2398,10 +3720,11 @@ class GameScene extends Phaser.Scene {
         this.minions = [];
         this.treasureChests = [];
         this.lastChestSpawn = 0;
-        this.chestSpawnInterval = 25000;
+        this.chestSpawnInterval = 60000;
         this.dashTimer = 0;
         this.dashCooldown = 0;
         this.lastDashDir = { x: 0, y: 0 };
+        this.createEnemyAnimations(); // 注册小怪精灵动画
         this.blinkTimer = 0;
         this.blinkCooldown = 0;
         this.blinkDistance = 220;
@@ -2431,7 +3754,19 @@ class GameScene extends Phaser.Scene {
         this.input.on('pointermove', p => this.mousePos = p);
         this.input.keyboard.on('keydown-SPACE', () => this.useSkill());
         this.input.keyboard.on('keydown-ESC', () => this.togglePause());
-        this.input.keyboard.on('keydown-Q', () => this.cycleWeapon());
+        this.input.keyboard.on('keydown-Q', () => {
+            if (this.runtime.secondaryWeapon) {
+                // 有副武器时，交换主副武器
+                const temp = this.runtime.weaponType;
+                this.switchWeapon(this.runtime.secondaryWeapon);
+                // 仅在切换成功（weaponType已变更）时更新副武器，避免冷却失败时错误交换
+                if (this.runtime.weaponType !== temp) {
+                    this.runtime.secondaryWeapon = temp;
+                }
+            } else {
+                this.cycleWeapon();
+            }
+        });
         this.input.keyboard.on('keydown-SHIFT', () => this.tryDash());
         this.input.keyboard.on('keydown-E', () => this.tryBlink());
         this.input.keyboard.on('keydown-R', () => this.tryEmergencyShield());
@@ -2458,7 +3793,7 @@ class GameScene extends Phaser.Scene {
             });
         }
         this.bgRocks = [];
-        for (let i = 0; i < 40; i++) {
+        for (let i = 0; i < 80; i++) {
             this.bgRocks.push({
                 x: Math.random() * WS * 2 - WS,
                 y: Math.random() * WS * 2 - WS,
@@ -2466,11 +3801,21 @@ class GameScene extends Phaser.Scene {
             });
         }
         this.bgTrees = [];
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 60; i++) {
             this.bgTrees.push({
                 x: Math.random() * WS * 2 - WS,
                 y: Math.random() * WS * 2 - WS,
                 size: 18 + Math.random() * 28
+            });
+        }
+        // v5：新增草丛/蘑菇等地面装饰
+        this.bgGrass = [];
+        for (let i = 0; i < 100; i++) {
+            this.bgGrass.push({
+                x: Math.random() * WS * 2 - WS,
+                y: Math.random() * WS * 2 - WS,
+                size: 4 + Math.random() * 10,
+                type: Math.floor(Math.random() * 3) // 0=草丛, 1=蘑菇, 2=小花
             });
         }
     }
@@ -2482,11 +3827,17 @@ class GameScene extends Phaser.Scene {
         const bgC = (ch >= 0 && ch < Chapters.length) ? Chapters[ch].bgColor : COLORS.bg1;
         g.fillStyle(bgC, 1);
         g.fillRect(0, 0, GW, GH);
+        // 区域色调叠加（降低透明度让背景更亮）
+        const region = REGIONS[this.runtime.currentRegion];
+        if (region) {
+            g.fillStyle(region.color, 0.2);
+            g.fillRect(0, 0, GW, GH);
+        }
 
-        const gridSize = 100;
+        const gridSize = 80;
         const ox = -this.playerWorldX % gridSize + GW / 2;
         const oy = -this.playerWorldY % gridSize + GH / 2;
-        g.lineStyle(1, COLORS.grid, 0.3);
+        g.lineStyle(1, 0x3a5a3a, 0.4);
         for (let x = ox; x < GW; x += gridSize) {
             g.beginPath(); g.moveTo(x, 0); g.lineTo(x, GH); g.strokePath();
         }
@@ -2520,20 +3871,130 @@ class GameScene extends Phaser.Scene {
             const sx = t.x - this.playerWorldX * 0.5 + GW / 2;
             const sy = t.y - this.playerWorldY * 0.5 + GH / 2;
             if (sx > -60 && sx < GW + 60 && sy > -60 && sy < GH + 60) {
-                g.fillStyle(0x1a1a1a, 0.5);
-                g.fillRect(sx - 3, sy - t.size * 0.2, 6, t.size * 0.5);
-                g.fillStyle(0x1a3a2a, 0.7);
-                g.fillTriangle(sx, sy - t.size, sx - t.size * 0.5, sy - t.size * 0.1, sx + t.size * 0.5, sy - t.size * 0.1);
-                g.fillStyle(0x1a4a3a, 0.6);
-                g.fillTriangle(sx, sy - t.size * 0.8, sx - t.size * 0.4, sy - t.size * 0.05, sx + t.size * 0.4, sy - t.size * 0.05);
+                // 树干
+                g.fillStyle(0x2a1a0a, 0.8);
+                g.fillRect(sx - 4, sy - t.size * 0.15, 8, t.size * 0.5);
+                // 树冠（多层）
+                g.fillStyle(0x1a4a2a, 0.85);
+                g.fillTriangle(sx, sy - t.size * 1.1, sx - t.size * 0.55, sy - t.size * 0.1, sx + t.size * 0.55, sy - t.size * 0.1);
+                g.fillStyle(0x2a5a3a, 0.75);
+                g.fillTriangle(sx, sy - t.size * 0.85, sx - t.size * 0.45, sy - t.size * 0.05, sx + t.size * 0.45, sy - t.size * 0.05);
+                // 树影
+                g.fillStyle(0x0a1a0a, 0.3);
+                g.fillEllipse(sx + 5, sy + t.size * 0.35, t.size * 0.8, t.size * 0.2);
             }
         });
 
-        const edgeDist = WS / 2 - 150;
+        // 地面装饰（草丛/蘑菇/小花）
+        this.bgGrass.forEach(gr => {
+            const sx = gr.x - this.playerWorldX * 0.7 + GW / 2;
+            const sy = gr.y - this.playerWorldY * 0.7 + GH / 2;
+            if (sx > -20 && sx < GW + 20 && sy > -20 && sy < GH + 20) {
+                if (gr.type === 0) {
+                    // 草丛
+                    g.fillStyle(0x2a5a2a, 0.6);
+                    g.fillEllipse(sx, sy, gr.size * 1.5, gr.size * 0.6);
+                    g.fillStyle(0x3a7a3a, 0.5);
+                    g.fillEllipse(sx + 2, sy - 1, gr.size * 1.0, gr.size * 0.4);
+                } else if (gr.type === 1) {
+                    // 蘑菇
+                    g.fillStyle(0x886644, 0.7);
+                    g.fillRect(sx - 1, sy, 3, gr.size * 0.5);
+                    g.fillStyle(0xcc4444, 0.8);
+                    g.fillEllipse(sx + 1, sy - 1, gr.size * 0.6, gr.size * 0.4);
+                    g.fillStyle(0xffffff, 0.6);
+                    g.fillCircle(sx, sy - 2, 1);
+                    g.fillCircle(sx + 3, sy - 1, 0.8);
+                } else {
+                    // 小花
+                    g.fillStyle(0x2a6a2a, 0.6);
+                    g.fillRect(sx - 1, sy, 2, gr.size * 0.6);
+                    const flowerColors = [0xff6688, 0xffaa44, 0xaa66ff, 0xff4466];
+                    g.fillStyle(flowerColors[gr.type % flowerColors.length], 0.7);
+                    g.fillCircle(sx, sy - 1, gr.size * 0.3);
+                }
+            }
+        });
+
+        // v5：章节专属背景元素（区域装饰）
+        const regId = this.runtime.currentRegion;
+        if (regId === 0) {
+            // 森林：飘落叶子
+            for (let i = 0; i < 8; i++) {
+                const seed = i * 137.5;
+                const px = ((time * 0.05 + seed) % GW + GW) % GW;
+                const py = ((time * 0.08 + seed * 1.7) % GH + GH) % GH;
+                g.fillStyle(0x4a8a3a, 0.5);
+                g.fillEllipse(px, py, 6, 3);
+            }
+        } else if (regId === 1) {
+            // 沼泽：雾气层
+            g.fillStyle(0x6688aa, 0.15);
+            for (let i = 0; i < 5; i++) {
+                const fx = (Math.sin(time * 0.0003 + i) * 200 + GW / 2);
+                const fy = (Math.cos(time * 0.0004 + i * 2) * 100 + GH / 2);
+                g.fillEllipse(fx, fy, 300, 80);
+            }
+        } else if (regId === 2) {
+            // 荒原：沙尘飞舞
+            for (let i = 0; i < 30; i++) {
+                const seed = i * 89.3;
+                const px = ((time * 0.2 + seed) % GW + GW) % GW;
+                const py = (Math.sin(time * 0.001 + i) * 30 + (i * 37) % GH);
+                g.fillStyle(0xddaa66, 0.4);
+                g.fillCircle(px, py, 1.5);
+            }
+        } else if (regId === 3) {
+            // 城堡：摇曳烛火光晕
+            for (let i = 0; i < 4; i++) {
+                const cx = GW * (0.2 + i * 0.2);
+                const cy = GH * 0.85 + Math.sin(time * 0.003 + i) * 4;
+                const flicker = 0.6 + Math.sin(time * 0.01 + i * 2) * 0.3;
+                g.fillStyle(0xff8844, 0.4 * flicker);
+                g.fillCircle(cx, cy, 25);
+                g.fillStyle(0xffcc66, 0.7 * flicker);
+                g.fillCircle(cx, cy, 8);
+            }
+        } else if (regId === 4) {
+            // 裂隙：岩浆裂缝脉动
+            const pulse = 0.4 + Math.sin(time * 0.003) * 0.2;
+            g.lineStyle(8, 0xff3300, pulse);
+            for (let i = 0; i < 4; i++) {
+                const y = GH * (0.2 + i * 0.2);
+                g.beginPath();
+                g.moveTo(0, y);
+                g.lineTo(GW, y + Math.sin(time * 0.001 + i) * 30);
+                g.strokePath();
+            }
+            g.fillStyle(0xff6600, 0.3);
+            for (let i = 0; i < 6; i++) {
+                const ex = (time * 0.1 + i * 200) % GW;
+                const ey = GH * 0.5 + Math.sin(time * 0.002 + i) * 100;
+                g.fillCircle(ex, ey, 4 + Math.sin(time * 0.005 + i) * 2);
+            }
+        }
+
+        // 边界警告：只在屏幕边缘显示细条，不覆盖整个屏幕
+        const edgeDist = WS / 2 - 100;
         if (Math.abs(this.playerWorldX) > edgeDist || Math.abs(this.playerWorldY) > edgeDist) {
-            const edgeAlpha = Math.min(0.2, (Math.max(Math.abs(this.playerWorldX), Math.abs(this.playerWorldY)) - edgeDist) / 200);
-            g.fillStyle(0xff0000, edgeAlpha);
-            g.fillRect(0, 0, GW, GH);
+            const edgeAlpha = Math.min(0.4, (Math.max(Math.abs(this.playerWorldX), Math.abs(this.playerWorldY)) - edgeDist) / 100);
+            // 只在接近的边界边缘显示红色警告条
+            if (this.playerWorldX > edgeDist) {
+                g.fillStyle(0xff0000, edgeAlpha);
+                g.fillRect(GW - 8, 0, 8, GH);
+            }
+            if (this.playerWorldX < -edgeDist) {
+                g.fillStyle(0xff0000, edgeAlpha);
+                g.fillRect(0, 0, 8, GH);
+            }
+            if (this.playerWorldY > edgeDist) {
+                g.fillStyle(0xff0000, edgeAlpha);
+                g.fillRect(0, GH - 8, GW, 8);
+            }
+            if (this.playerWorldY < -edgeDist) {
+                g.fillStyle(0xff0000, edgeAlpha);
+                g.fillRect(0, 0, GW, 8);
+            }
         }
     }
 
@@ -2542,6 +4003,9 @@ class GameScene extends Phaser.Scene {
         this.player.setDepth(100);
 
         const shadow = this.add.ellipse(0, 18, 24, 8, 0x000000, 0.3);
+        // 双腿（行走时摆动）
+        const legL = this.add.rectangle(-5, 22, 7, 14, 0x2a2a44);
+        const legR = this.add.rectangle(5, 22, 7, 14, 0x2a2a44);
         const cape = this.add.triangle(-6, 5, -12, -8, -22, 30, -4, 22, 0x2244aa);
         const capeDark = this.add.triangle(-8, 8, -14, -5, -20, 28, -6, 20, 0x1a3377, 0.6);
         const body = this.add.ellipse(0, 5, 20, 28, COLORS.playerBody);
@@ -2556,10 +4020,18 @@ class GameScene extends Phaser.Scene {
         const belt = this.add.rectangle(0, 8, 22, 5, 0x8B4513);
         const buckle = this.add.rectangle(0, 8, 6, 7, 0xffd700);
 
-        this.player.add([shadow, capeDark, cape, body, bodyDark, belt, buckle, head, hair, hairFront, eye1, eye2, eyeShine1, eyeShine2]);
+        this.player.add([shadow, legL, legR, capeDark, cape, body, bodyDark, belt, buckle, head, hair, hairFront, eye1, eye2, eyeShine1, eyeShine2]);
 
         this.playerBody = body;
         this.playerHead = head;
+        this.playerCape = cape;
+        this.playerCapeDark = capeDark;
+        this.playerLegL = legL;
+        this.playerLegR = legR;
+        this.playerEyes = [eye1, eye2];
+        this.playerEyeShines = [eyeShine1, eyeShine2];
+        this._blinkTimer = 0;
+        this._walkPhase = 0;
         this.weaponContainer = this.add.container(28, 0);
         this.weaponContainer.setDepth(101);
         this.player.add(this.weaponContainer);
@@ -2632,8 +4104,9 @@ class GameScene extends Phaser.Scene {
     }
 
     switchWeapon(type) {
+        if (!this.saveData.unlockedWeapons.includes(type)) return;
         const now = this.time.now - this.startTime;
-        if (now - this.lastWeaponSwitch < 2000) {
+        if (now - this.lastWeaponSwitch < 1500) {
             this.showCenterText('武器切换冷却中...', '#ff4444');
             return;
         }
@@ -2643,7 +4116,253 @@ class GameScene extends Phaser.Scene {
         this.runtime.skill = SkillFactory.create(type);
         this.createWeaponVisual(type);
         if (this.skillIcon) this.skillIcon.setText(this.runtime.skill.icon);
-        this.showCenterText(`武器切换：${this.runtime.weapon.name}`, '#ffdd00');
+        const info = WeaponFactory.info(type);
+        this.showCenterText(`${info.name} Lv.${this.weaponLevels[type] || 1}`, '#ffdd00');
+        this.updateWeaponHUD();
+    }
+
+    switchRegion(regionId) {
+        if (regionId < 0 || regionId >= REGIONS.length) return;
+        this.currentRegion = regionId;
+        this.runtime.currentRegion = regionId;
+        // 清除当前敌人
+        this.enemyManager.enemies.forEach(e => { if (e.container) e.container.destroy(); });
+        this.enemyManager.enemies = [];
+        // 显示区域名称
+        this.showCenterText(REGIONS[regionId].name, '#ffffff');
+        // 更新背景色调
+        this.updateRegionBg();
+        // 保存进度
+        this.saveData.currentRegion = regionId;
+        this.saveData.regionCleared = this.runtime.regionCleared;
+        SaveData.save(this.saveData);
+        // 启动章节任务
+        this.startChapterQuest();
+    }
+
+    updateRegionBg() {
+        // 背景在 drawBackground 中每帧绘制，区域色调会自动应用
+        this.drawBackground();
+    }
+
+    startChapterQuest() {
+        const chapter = STORY_CHAPTERS[this.runtime.currentRegion];
+        if (!chapter) return;
+
+        this.runtime.questProgress = 0;
+        this.runtime.questCompleted = false;
+
+        // 显示章节标题和介绍
+        this.showStoryDialogue(chapter.intro);
+
+        // 根据任务类型初始化
+        if (chapter.quest.type === 'activate') {
+            this.spawnQuestTargets(chapter.quest.count);
+        } else if (chapter.quest.type === 'collect') {
+            // 收集型：击杀精英怪
+            this.spawnEliteEnemies(chapter.quest.count);
+        } else if (chapter.quest.type === 'challenge') {
+            // 挑战型：生成BOSS幻影
+            this.spawnPhantomBosses(chapter.quest.count);
+        }
+    }
+
+    spawnQuestTargets(count) {
+        // 在地图上生成符文阵/灯塔
+        if (this.questTargets) {
+            this.questTargets.forEach(q => { if (q.obj) q.obj.destroy(); if (q.arrow) q.arrow.destroy(); });
+        }
+        this.questTargets = [];
+        const halfW = WS / 2 - 80; // 留出边界余量，防止符文生成在世界边缘外
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2 + Math.random() * 0.3;
+            // 增大生成距离，让玩家需要真正移动才能到达
+            const dist = 600 + Math.random() * 300;
+            let wx = this.playerWorldX + Math.cos(angle) * dist;
+            let wy = this.playerWorldY + Math.sin(angle) * dist;
+            // clamp 到世界边界内
+            wx = Math.max(-halfW, Math.min(halfW, wx));
+            wy = Math.max(-halfW, Math.min(halfW, wy));
+
+            const sx = wx - this.playerWorldX + GW / 2;
+            const sy = wy - this.playerWorldY + GH / 2;
+
+            // 符文阵：外环 + 内核 + 进度环
+            const container = this.add.container(sx, sy);
+            container.setDepth(50);
+            const outer = this.add.circle(0, 0, 28, 0x44ff88, 0.18);
+            outer.setStrokeStyle(3, 0x88ffaa);
+            const inner = this.add.circle(0, 0, 12, 0x44ff88, 0.55);
+            inner.setStrokeStyle(2, 0xddffdd);
+            const mark = this.add.text(0, -2, '✦', { fontSize: '20px', fill: '#aaffcc' }).setOrigin(0.5);
+            // v5：进度环（5 秒激活进度）
+            const progressRing = this.add.circle(0, 0, 36, 0x44ff88, 0.0);
+            progressRing.setStrokeStyle(2, 0xffee88, 0);
+            const progressText = this.add.text(0, 50, '', {
+                fontSize: '12px', fontFamily: 'Courier New', color: '#ffee88', fontWeight: 'bold'
+            }).setOrigin(0.5);
+            container.add([outer, inner, mark, progressRing, progressText]);
+
+            // 旋转/呼吸动画
+            this.tweens.add({ targets: outer, scaleX: 1.25, scaleY: 1.25, duration: 1100, yoyo: true, repeat: -1 });
+            this.tweens.add({ targets: mark, angle: 360, duration: 4000, repeat: -1 });
+
+            // 守卫：每个符文周围生成 4-6 只怪，含精英，提升难度
+            const region = REGIONS[this.runtime.currentRegion];
+            const guardCount = 4 + Math.floor(Math.random() * 3);
+            for (let g = 0; g < guardCount; g++) {
+                const ga = Math.random() * Math.PI * 2;
+                const gd = 70 + Math.random() * 70;
+                const e = new Enemy(this, region.enemyPool[Math.floor(Math.random() * region.enemyPool.length)]);
+                e.spawn(wx + Math.cos(ga) * gd, wy + Math.sin(ga) * gd);
+                // 30% 概率守卫为精英（tier 1-2），提升难度
+                if (Math.random() < 0.30) {
+                    e.setElite(Math.random() < 0.6 ? 1 : 2);
+                }
+                this.enemyManager.enemies.push(e);
+            }
+
+            // v5：5 秒持续激活机制
+            this.questTargets.push({
+                obj: container, outer, inner, mark, progressRing, progressText,
+                activated: false, activating: false,
+                progress: 0, activateTime: 5000,
+                lastGuardSpawn: 0,
+                worldX: wx, worldY: wy, arrow: null
+            });
+        }
+    }
+
+    activateQuestTarget(qt, idx) {
+        if (!this.questTargets || this.questTargets[idx].activated) return;
+        this.questTargets[idx].activated = true;
+        if (qt.arrow) { qt.arrow.destroy(); qt.arrow = null; }
+        // 激活后淡出销毁，不再停留在屏幕上
+        const sx = qt.worldX - this.playerWorldX + GW / 2;
+        const sy = qt.worldY - this.playerWorldY + GH / 2;
+        this.particles.explosion(sx, sy, 36, 0x44ff88);
+        this.cameras.main.flash(250, 100, 255, 150);
+        this.cameras.main.shake(180, 0.006);
+        if (qt.obj) {
+            this.tweens.add({
+                targets: qt.obj, alpha: 0, scale: 2.2, duration: 500, ease: 'Cubic.easeOut',
+                onComplete: () => { if (qt.obj) { qt.obj.destroy(); qt.obj = null; } }
+            });
+        }
+
+        // 实质反馈：护盾 + 短暂狂暴 + 稀有掉落 + 提示
+        this.runtime.shield = (this.runtime.shield || 0) + 60;
+        this.rageMode = true;
+        this.rageTimer = 5000;
+        this.particles.explosion(this.player.x, this.player.y, 30, 0xffaa00);
+        // 生成稀有掉落（紫色宝石）
+        if (typeof PickupItem !== 'undefined') {
+            this.items.push(new PickupItem(this, 'gem_purple', qt.worldX, qt.worldY));
+            this.items.push(new PickupItem(this, 'exp_big', qt.worldX + 30, qt.worldY));
+        }
+        this.showCenterText('✦ 符文激活！获得祝福 ✦', '#88ffaa', 1800);
+
+        this.runtime.questProgress++;
+
+        const chapter = STORY_CHAPTERS[this.runtime.currentRegion];
+        const npcKey = Object.keys(chapter.npcDialogues)[0];
+        const dialogues = chapter.npcDialogues[npcKey];
+
+        if (this.runtime.questProgress >= chapter.quest.count) {
+            this.runtime.questCompleted = true;
+            this.showStoryDialogue(dialogues.questComplete, '#44ff88');
+            // 生成BOSS传送门
+            this.spawnBossPortal();
+        } else {
+            this.showStoryDialogue(dialogues.questUpdate(this.runtime.questProgress, chapter.quest.count));
+        }
+    }
+
+    spawnEliteEnemies(count) {
+        // 生成精英怪（标记为任务目标）
+        for (let i = 0; i < count; i++) {
+            this.time.delayedCall(i * 3000, () => {
+                const region = REGIONS[this.runtime.currentRegion];
+                const type = region.enemyPool[Math.floor(Math.random() * region.enemyPool.length)];
+                const e = new Enemy(this, type);
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 300 + Math.random() * 200;
+                e.spawn(
+                    this.playerWorldX + Math.cos(angle) * dist,
+                    this.playerWorldY + Math.sin(angle) * dist
+                );
+                e.setElite();
+                e.isQuestTarget = true;
+                this.enemyManager.enemies.push(e);
+            });
+        }
+    }
+
+    spawnPhantomBosses(count) {
+        // 生成BOSS幻影
+        for (let i = 0; i < count; i++) {
+            this.time.delayedCall(i * 5000, () => {
+                const chapter = STORY_CHAPTERS[i];
+                if (!chapter) return;
+                const bossConfig = BossConfigs.find(b => b.id === chapter.bossId);
+                if (!bossConfig) return;
+                // 创建简化版BOSS幻影（50%难度）
+                const phantom = new Boss(this, bossConfig.id);
+                phantom.spawn(0.5, 1);
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 250;
+                phantom.worldX = this.playerWorldX + Math.cos(angle) * dist;
+                phantom.worldY = this.playerWorldY + Math.sin(angle) * dist;
+                phantom.isPhantom = true;
+                this.bossManager.boss = phantom;
+            });
+        }
+    }
+
+    spawnBossPortal() {
+        const px = GW / 2;
+        const py = GH / 2 - 100;
+        const portal = this.add.circle(px, py, 35, 0xff4444, 0.6);
+        portal.setStrokeStyle(3, 0xff8866);
+        portal.setDepth(100);
+        this.tweens.add({
+            targets: portal,
+            scaleX: 1.2, scaleY: 1.2,
+            duration: 800, yoyo: true, repeat: -1
+        });
+        portal.setInteractive();
+        portal.on('pointerdown', () => {
+            portal.destroy();
+            // 触发BOSS战
+            this.bossManager.spawnBoss();
+        });
+        this.showCenterText('BOSS传送门已开启！', '#ff4444');
+    }
+
+    spawnPortal() {
+        // 在屏幕右侧生成传送门
+        const px = GW - 100;
+        const py = GH / 2;
+        const portal = this.add.circle(px, py, 30, 0x8844ff, 0.6);
+        portal.setStrokeStyle(3, 0xaa88ff);
+        portal.setDepth(90);
+        // 旋转动画
+        this.tweens.add({
+            targets: portal,
+            scaleX: 1.2,
+            scaleY: 1.2,
+            duration: 800,
+            yoyo: true,
+            repeat: -1
+        });
+        // 交互
+        portal.setInteractive();
+        portal.on('pointerdown', () => {
+            this.switchRegion(this.runtime.currentRegion + 1);
+            portal.destroy();
+        });
+        this.showCenterText('传送门已开启！点击进入下一区域', '#aa88ff');
+        this.portal = portal;
     }
 
     createHUD() {
@@ -2816,7 +4535,13 @@ class GameScene extends Phaser.Scene {
             { id: 'hell', name: '地狱', icon: '💀', color: 0xaa00ff, mult: 2.0, dmgMult: 1.6, rewardMult: 2.5 }
         ];
         this.menuDifficulties = difficulties;
-        if (!this.selectedDifficulty) this.selectedDifficulty = difficulties[1];
+        // v5：难度锁系统——默认选已解锁的最高难度
+        if (!this.selectedDifficulty) {
+            const unlocked = this.saveData.unlockedDifficulties || ['easy'];
+            const order = ['easy', 'normal', 'hard', 'hell'];
+            const highestUnlocked = order.filter(d => unlocked.includes(d)).pop();
+            this.selectedDifficulty = difficulties.find(d => d.id === highestUnlocked) || difficulties[0];
+        }
 
         const bg = this.add.rectangle(0, 0, GW, GH, 0x000000, 0.9).setOrigin(0).setDepth(400);
         for (let i = 0; i < 30; i++) {
@@ -2855,23 +4580,45 @@ class GameScene extends Phaser.Scene {
         difficulties.forEach((d, i) => {
             const x = GW / 2 + (i - 1.5) * 130;
             const isSel = this.selectedDifficulty.id === d.id;
+            // v5：难度锁判定
+            const unlocked = this.saveData.unlockedDifficulties || ['easy'];
+            const isLocked = !unlocked.includes(d.id);
             const card = this.add.rectangle(x, diffY, 110, 70,
-                isSel ? d.color : 0x111122, isSel ? 0.95 : 0.85)
-                .setStrokeStyle(isSel ? 4 : 2, isSel ? 0xffffff : d.color)
+                isLocked ? 0x222222 : (isSel ? d.color : 0x111122),
+                isLocked ? 0.7 : (isSel ? 0.95 : 0.85))
+                .setStrokeStyle(isSel ? 4 : 2, isLocked ? 0x555555 : (isSel ? 0xffffff : d.color))
                 .setInteractive().setDepth(401);
-            const ic = this.add.text(x, diffY - 18, d.icon, { fontSize: '26px' }).setOrigin(0.5).setDepth(402);
+            const ic = this.add.text(x, diffY - 18, isLocked ? '🔒' : d.icon, { fontSize: '26px' }).setOrigin(0.5).setDepth(402);
             const nm = this.add.text(x, diffY + 12, d.name, {
-                fontSize: '15px', fontFamily: 'Courier New', color: '#fff', fontWeight: 'bold'
+                fontSize: '15px', fontFamily: 'Courier New',
+                color: isLocked ? '#666' : '#fff', fontWeight: 'bold'
             }).setOrigin(0.5).setDepth(402);
-            const bonus = d.rewardMult > 1 ? `奖励×${d.rewardMult}` : (d.rewardMult < 1 ? `奖励×${d.rewardMult}` : '标准');
-            const bn = this.add.text(x, diffY + 32, bonus, {
-                fontSize: '9px', fontFamily: 'Courier New', color: '#ffd700'
-            }).setOrigin(0.5).setDepth(402);
-            card.on('pointerover', () => { card.setStrokeStyle(4, 0xffffff); });
+            let bn;
+            if (isLocked) {
+                const order = ['easy', 'normal', 'hard', 'hell'];
+                const prevIdx = order.indexOf(d.id) - 1;
+                const prevName = prevIdx >= 0 ? difficulties[prevIdx].name : '';
+                bn = this.add.text(x, diffY + 32, `通关${prevName}解锁`, {
+                    fontSize: '9px', fontFamily: 'Courier New', color: '#ff6644'
+                }).setOrigin(0.5).setDepth(402);
+            } else {
+                const bonus = d.rewardMult > 1 ? `奖励×${d.rewardMult}` : (d.rewardMult < 1 ? `奖励×${d.rewardMult}` : '标准');
+                bn = this.add.text(x, diffY + 32, bonus, {
+                    fontSize: '9px', fontFamily: 'Courier New', color: '#ffd700'
+                }).setOrigin(0.5).setDepth(402);
+            }
+            card.on('pointerover', () => { if (!isLocked) card.setStrokeStyle(4, 0xffffff); });
             card.on('pointerout', () => {
-                if (this.selectedDifficulty.id !== d.id) card.setStrokeStyle(2, d.color);
+                if (!isLocked && this.selectedDifficulty.id !== d.id) card.setStrokeStyle(2, d.color);
             });
             card.on('pointerdown', () => {
+                if (isLocked) {
+                    const tipTxt = this.add.text(x, diffY - 50, '🔒 未解锁', {
+                        fontSize: '14px', fontFamily: 'Courier New', color: '#ff4444', fontWeight: 'bold'
+                    }).setOrigin(0.5).setDepth(403);
+                    this.tweens.add({ targets: tipTxt, alpha: 0, y: tipTxt.y - 20, duration: 1000, onComplete: () => tipTxt.destroy() });
+                    return;
+                }
                 this.selectedDifficulty = d;
                 this.menuElements.forEach(e => e.destroy());
                 this.menuElements = [];
@@ -2924,6 +4671,45 @@ class GameScene extends Phaser.Scene {
             fontSize: '12px', fontFamily: 'Courier New', color: '#888'
         }).setOrigin(0.5).setDepth(401);
 
+        // v5：三资源显示
+        const resDisplay = this.add.text(GW / 2, 470,
+            `✦ 魂石: ${this.saveData.soulStones || 0}  |  ⛏ 玄铁: ${this.saveData.darkIron || 0}  |  ✺ BOSS之血: ${this.saveData.bossBlood || 0}`, {
+            fontSize: '15px', fontFamily: 'Courier New', color: '#ffffff',
+            stroke: '#000', strokeThickness: 2, fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(401);
+
+        const smithyBtn = this.add.rectangle(GW / 2 - 90, 505, 160, 36, 0x332211, 0.95)
+            .setStrokeStyle(2, 0xffaa44).setInteractive().setDepth(401);
+        const smithyTxt = this.add.text(GW / 2 - 90, 505, '⚒ 铁匠铺', {
+            fontSize: '15px', fontFamily: 'Courier New', color: '#ffcc66', fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        smithyBtn.on('pointerover', () => smithyBtn.setStrokeStyle(3, 0xffffff));
+        smithyBtn.on('pointerout', () => smithyBtn.setStrokeStyle(2, 0xffaa44));
+        smithyBtn.on('pointerdown', () => this.showSmithy());
+
+        const upgradeBtn = this.add.rectangle(GW / 2 + 90, 505, 160, 36, 0x221144, 0.95)
+            .setStrokeStyle(2, 0xaa88ff).setInteractive().setDepth(401);
+        const upgradeTxt = this.add.text(GW / 2 + 90, 505, '✦ 角色养成', {
+            fontSize: '15px', fontFamily: 'Courier New', color: '#ccaaff', fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        upgradeBtn.on('pointerover', () => upgradeBtn.setStrokeStyle(3, 0xffffff));
+        upgradeBtn.on('pointerout', () => upgradeBtn.setStrokeStyle(2, 0xaa88ff));
+        upgradeBtn.on('pointerdown', () => this.showUpgradesPanel());
+
+        this.menuElements.push(resDisplay, smithyBtn, smithyTxt, upgradeBtn, upgradeTxt);
+
+        // 新武器解锁提示
+        if (this._unlockedNewWeapons && this._unlockedNewWeapons.length > 0) {
+            const unlockMsg = this._unlockedNewWeapons.map(w => WeaponFactory.info(w).name).join('、');
+            const unlockTxt = this.add.text(GW / 2, 150, `🏆 新武器解锁: ${unlockMsg}!`, {
+                fontSize: '18px', fontFamily: 'Courier New', color: '#44ff88',
+                stroke: '#000', strokeThickness: 3, fontWeight: 'bold'
+            }).setOrigin(0.5).setDepth(401);
+            this.tweens.add({ targets: unlockTxt, alpha: { from: 1, to: 0.4 }, yoyo: true, duration: 800, repeat: 3 });
+            this.menuElements.push(unlockTxt);
+            this._unlockedNewWeapons = null;
+        }
+
         const today = new Date();
         const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
         const dailyBtn = this.add.rectangle(GW / 2, GH - 115, 220, 38, 0x442266, 0.95)
@@ -2951,6 +4737,285 @@ class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(401);
 
         this.menuElements.push(bg, title, titleGlow, subtitle, diffTitle, wpTitle, tips, dailyBtn, dailyText, best, stats);
+    }
+
+    // ===== v5 局外养成：铁匠铺（玄铁升级 + 武器形态显示）=====
+    showSmithy() {
+        this.menuElements.forEach(e => e.destroy());
+        this.menuElements = [];
+        const sd = this.saveData;
+        const bg = this.add.rectangle(0, 0, GW, GH, 0x000000, 0.95).setOrigin(0).setDepth(400);
+        const title = this.add.text(GW / 2, 60, '⚒ 铁匠铺 — 武器永久强化', {
+            fontSize: '32px', fontFamily: 'Courier New', color: '#ffcc66',
+            stroke: '#000', strokeThickness: 4, fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(401);
+        // v5：显示玄铁 + BOSS之血 + 进化道具
+        const resTxt = this.add.text(GW / 2, 100,
+            `⛏ 玄铁: ${sd.darkIron || 0}  |  ✺ BOSS之血: ${sd.bossBlood || 0}  |  ◈ 影石: ${(sd.weaponMats && sd.weaponMats.shadowStone) || 0}  |  ◆ 血晶: ${(sd.weaponMats && sd.weaponMats.bloodCrystal) || 0}`, {
+            fontSize: '15px', fontFamily: 'Courier New', color: '#ffffff', fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(401);
+        this.menuElements.push(bg, title, resTxt);
+
+        const weapons = WeaponFactory.all().filter(w => sd.unlockedWeapons.includes(w));
+        weapons.forEach((w, i) => {
+            const x = GW / 2 + (i - (weapons.length - 1) / 2) * 150;
+            const y = 290;
+            const info = WeaponFactory.info(w);
+            const lv = (sd.weaponLevels && sd.weaponLevels[w]) || 0;
+            const form = (sd.weaponForms && sd.weaponForms[w]) || 0;
+            // v5：玄铁升级（1-10级），cost 用玄铁
+            const maxLv = 10;
+            const cost = lv >= maxLv ? 0 : Math.floor(5 * Math.pow(lv + 1, 1.5));
+            const canAfford = lv < maxLv && (sd.darkIron || 0) >= cost;
+            const cardBg = this.add.rectangle(x, y, 135, 200, 0x111122, 0.95)
+                .setStrokeStyle(3, info.color).setInteractive().setDepth(401);
+            const icon = this.add.text(x, y - 70, info.icon, { fontSize: '36px' }).setOrigin(0.5).setDepth(402);
+            const name = this.add.text(x, y - 30, info.name, {
+                fontSize: '14px', fontFamily: 'Courier New', color: '#fff', fontWeight: 'bold'
+            }).setOrigin(0.5).setDepth(402);
+            // v5：显示形态阶段
+            const formNames = ['基础', '二阶', '三阶', '四阶', '终极'];
+            const formTxt = this.add.text(x, y - 8, `形态: ${formNames[form] || '基础'}`, {
+                fontSize: '11px', fontFamily: 'Courier New', color: '#ff88ff'
+            }).setOrigin(0.5).setDepth(402);
+            const lvTxt = this.add.text(x, y + 12, lv >= maxLv ? `Lv.MAX` : `Lv.${lv}/${maxLv} (+${lv * 10}%攻击)`, {
+                fontSize: '12px', fontFamily: 'Courier New', color: '#88ff88'
+            }).setOrigin(0.5).setDepth(402);
+            let costTxt, hint;
+            if (lv >= maxLv) {
+                costTxt = this.add.text(x, y + 38, '已达满级', { fontSize: '11px', fontFamily: 'Courier New', color: '#666' }).setOrigin(0.5).setDepth(402);
+                hint = this.add.text(x, y + 60, '需进化形态', { fontSize: '11px', fontFamily: 'Courier New', color: '#aa66ff' }).setOrigin(0.5).setDepth(402);
+            } else {
+                costTxt = this.add.text(x, y + 38, `消耗 ${cost} 玄铁`, {
+                    fontSize: '12px', fontFamily: 'Courier New',
+                    color: canAfford ? '#ffaa55' : '#666'
+                }).setOrigin(0.5).setDepth(402);
+                hint = this.add.text(x, y + 62, canAfford ? '点击升级' : '玄铁不足', {
+                    fontSize: '11px', fontFamily: 'Courier New',
+                    color: canAfford ? '#ffaa44' : '#555'
+                }).setOrigin(0.5).setDepth(402);
+            }
+            if (canAfford) {
+                cardBg.on('pointerover', () => cardBg.setStrokeStyle(5, 0xffffff));
+                cardBg.on('pointerout', () => cardBg.setStrokeStyle(3, info.color));
+                cardBg.on('pointerdown', () => {
+                    sd.darkIron -= cost;
+                    sd.weaponLevels = sd.weaponLevels || {};
+                    sd.weaponLevels[w] = lv + 1;
+                    SaveData.save(sd);
+                    this.audio.play('levelup');
+                    this.showSmithy();
+                });
+            }
+            // v5 武器进化按钮（消耗影石+血晶+BOSS之血）
+            if (form < 4) {
+                const evolveCosts = [
+                    { shadow: 3, blood: 1, boss: 1 },   // 0→1
+                    { shadow: 5, blood: 2, boss: 2 },   // 1→2
+                    { shadow: 8, blood: 4, boss: 4 },   // 2→3
+                    { shadow: 12, blood: 8, boss: 8 }   // 3→4
+                ];
+                const ev = evolveCosts[form];
+                const haveShadow = (sd.weaponMats && sd.weaponMats.shadowStone) || 0;
+                const haveBlood = (sd.weaponMats && sd.weaponMats.bloodCrystal) || 0;
+                const haveBoss = sd.bossBlood || 0;
+                const canEvolve = lv >= 5 && haveShadow >= ev.shadow && haveBlood >= ev.blood && haveBoss >= ev.boss;
+                const evolveBtn = this.add.text(x, y + 90,
+                    lv < 5 ? `进化需Lv5` : `◈进化 ${form+1}阶 (◈${ev.shadow} ◆${ev.blood} ✺${ev.boss})`, {
+                        fontSize: '10px', fontFamily: 'Courier New',
+                        color: canEvolve ? '#ff66ff' : (lv < 5 ? '#555' : '#884488')
+                    }).setOrigin(0.5).setDepth(402);
+                if (canEvolve) {
+                    evolveBtn.setInteractive({ useHandCursor: true });
+                    evolveBtn.on('pointerover', () => evolveBtn.setScale(1.1));
+                    evolveBtn.on('pointerout', () => evolveBtn.setScale(1));
+                    evolveBtn.on('pointerdown', () => {
+                        sd.weaponMats.shadowStone -= ev.shadow;
+                        sd.weaponMats.bloodCrystal -= ev.blood;
+                        sd.bossBlood -= ev.boss;
+                        sd.weaponForms = sd.weaponForms || {};
+                        sd.weaponForms[w] = form + 1;
+                        SaveData.save(sd);
+                        this.audio.play('levelup');
+                        this.cameras.main.flash(400, 180, 80, 255);
+                        this.showSmithy();
+                    });
+                }
+                this.menuElements.push(evolveBtn);
+            } else {
+                const maxForm = this.add.text(x, y + 90, '★ 终极形态 ★', {
+                    fontSize: '11px', fontFamily: 'Courier New', color: '#ffdd44', fontWeight: 'bold'
+                }).setOrigin(0.5).setDepth(402);
+                this.menuElements.push(maxForm);
+            }
+            this.menuElements.push(cardBg, icon, name, formTxt, lvTxt, costTxt, hint);
+        });
+
+        const back = this.add.text(GW / 2, GH - 60, '◀ 返回主菜单', {
+            fontSize: '18px', fontFamily: 'Courier New', color: '#66ff66', stroke: '#000', strokeThickness: 2
+        }).setOrigin(0.5).setInteractive().setDepth(401);
+        back.on('pointerdown', () => this.showMainMenu());
+        this.menuElements.push(back);
+    }
+
+    // ===== v5 局外养成：10 分支角色加点 =====
+    showUpgradesPanel() {
+        this.menuElements.forEach(e => e.destroy());
+        this.menuElements = [];
+        const sd = this.saveData;
+        // v5：10 分支 upgrades
+        sd.upgrades = sd.upgrades || {
+            bloodlust: 0, berserk: 0, ironwall: 0, immortal: 0,
+            shadowstep: 0, gale: 0, greed: 0, sage: 0, element: 0, summon: 0
+        };
+        sd.unlockedUpgrades = sd.unlockedUpgrades || ['bloodlust', 'ironwall', 'shadowstep', 'greed'];
+        const bg = this.add.rectangle(0, 0, GW, GH, 0x000000, 0.95).setOrigin(0).setDepth(400);
+        const title = this.add.text(GW / 2, 50, '✦ 角色养成 — 10 分支永久加点', {
+            fontSize: '28px', fontFamily: 'Courier New', color: '#ccaaff',
+            stroke: '#000', strokeThickness: 4, fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(401);
+        const soulTxt = this.add.text(GW / 2, 85, `✦ 魂石: ${sd.soulStones || 0}`, {
+            fontSize: '16px', fontFamily: 'Courier New', color: '#aa88ff', fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(401);
+        this.menuElements.push(bg, title, soulTxt);
+
+        // v5：10 分支定义（5 支柱 × 2 分支）
+        const branches = [
+            // 输出支柱
+            { key: 'bloodlust', name: '嗜血', icon: '🩸', color: 0xff3344, pillar: '输出',
+              desc: '暴击时回血5%HP；满级暴击+30%', costBase: 4,
+              unlock: { default: true }, unlockDesc: '默认解锁' },
+            { key: 'berserk', name: '狂战', icon: '🔥', color: 0xff6622, pillar: '输出',
+              desc: '血量<50%时伤害+25%；满级+60%', costBase: 5,
+              unlock: { kills: 100 }, unlockDesc: '累计击杀100怪' },
+            // 生存支柱
+            { key: 'ironwall', name: '铁壁', icon: '🛡', color: 0x4488ff, pillar: '生存',
+              desc: '致命伤生成50护盾(60sCD)；满级护盾+200', costBase: 4,
+              unlock: { default: true }, unlockDesc: '默认解锁' },
+            { key: 'immortal', name: '不朽', icon: '♾', color: 0x44ddaa, pillar: '生存',
+              desc: '死亡复活1次(30%血)；满级反伤+50%', costBase: 6,
+              unlock: { difficulty: 'normal' }, unlockDesc: '通关普通难度' },
+            // 机动支柱
+            { key: 'shadowstep', name: '影步', icon: '💨', color: 0x88ddff, pillar: '机动',
+              desc: '冲刺0.3秒无敌；满级CD-50%', costBase: 5,
+              unlock: { default: true }, unlockDesc: '默认解锁' },
+            { key: 'gale', name: '疾风', icon: '🌪', color: 0x66ffcc, pillar: '机动',
+              desc: '移速+8% 攻速+5%/级；满级双冲刺', costBase: 5,
+              unlock: { moveDist: 5000 }, unlockDesc: '累计移动5km' },
+            // 资源支柱
+            { key: 'greed', name: '贪婪', icon: '💰', color: 0xffcc44, pillar: '资源',
+              desc: '精英必掉玄铁；满级掉落+50%', costBase: 4,
+              unlock: { default: true }, unlockDesc: '默认解锁' },
+            { key: 'sage', name: '智者', icon: '📜', color: 0xddaaff, pillar: '资源',
+              desc: '经验+10% 商店9折/级；满级3折', costBase: 5,
+              unlock: { shopPurchases: 10 }, unlockDesc: '商店购买10次' },
+            // 特性支柱
+            { key: 'element', name: '元素', icon: '⚡', color: 0x44ffff, pillar: '特性',
+              desc: '攻击附10%火伤+灼烧；满级冰雷双附魔', costBase: 6,
+              unlock: { bosses: 3 }, unlockDesc: '击败3种不同BOSS' },
+            { key: 'summon', name: '召唤', icon: '👤', color: 0xcc88ff, pillar: '特性',
+              desc: '15%概率影子分身助攻；满级双分身', costBase: 7,
+              unlock: { soulStones: 50 }, unlockDesc: '累计获得50魂石' }
+        ];
+
+        // 检查解锁条件
+        const checkUnlock = (b) => {
+            if (b.unlock.default) return true;
+            if (b.unlock.kills && (sd.totalKills || 0) >= b.unlock.kills) return true;
+            if (b.unlock.difficulty && sd.difficultyCleared && sd.difficultyCleared[b.unlock.difficulty]) return true;
+            if (b.unlock.moveDist && (sd.totalMoveDistance || 0) >= b.unlock.moveDist) return true;
+            if (b.unlock.shopPurchases && (sd.totalShopPurchases || 0) >= b.unlock.shopPurchases) return true;
+            if (b.unlock.bosses && (sd.bossesDefeated || []).length >= b.unlock.bosses) return true;
+            if (b.unlock.soulStones && (sd.soulStones || 0) >= b.unlock.soulStones) return true;
+            return false;
+        };
+
+        // 分两行显示，每行5个
+        branches.forEach((p, i) => {
+            const col = i % 5;
+            const row = Math.floor(i / 5);
+            const x = GW / 2 + (col - 2) * 145;
+            const y = 180 + row * 230;
+            const lv = sd.upgrades[p.key] || 0;
+            const maxLv = 5;
+            const isUnlocked = checkUnlock(p);
+            const cost = lv >= maxLv ? 0 : Math.floor(p.costBase * Math.pow(lv + 1, 1.6));
+            const canAfford = isUnlocked && lv < maxLv && (sd.soulStones || 0) >= cost;
+            const cardBg = this.add.rectangle(x, y, 130, 200,
+                isUnlocked ? 0x111122 : 0x1a1a1a, 0.95)
+                .setStrokeStyle(3, isUnlocked ? p.color : 0x444444)
+                .setInteractive().setDepth(401);
+            const icon = this.add.text(x, y - 75, isUnlocked ? p.icon : '🔒', { fontSize: '32px' }).setOrigin(0.5).setDepth(402);
+            const name = this.add.text(x, y - 38, p.name, {
+                fontSize: '14px', fontFamily: 'Courier New',
+                color: isUnlocked ? '#fff' : '#888', fontWeight: 'bold'
+            }).setOrigin(0.5).setDepth(402);
+            const pillarTxt = this.add.text(x, y - 18, `[${p.pillar}]`, {
+                fontSize: '9px', fontFamily: 'Courier New', color: '#888'
+            }).setOrigin(0.5).setDepth(402);
+            const lvTxt = this.add.text(x, y + 0, lv >= maxLv ? 'Lv.MAX' : `Lv.${lv}/${maxLv}`, {
+                fontSize: '12px', fontFamily: 'Courier New', color: '#88ff88'
+            }).setOrigin(0.5).setDepth(402);
+            const descTxt = this.add.text(x, y + 25, isUnlocked ? p.desc : p.unlockDesc, {
+                fontSize: '9px', fontFamily: 'Courier New',
+                color: isUnlocked ? '#bbb' : '#ff8844',
+                align: 'center', wordWrap: { width: 120 }
+            }).setOrigin(0.5).setDepth(402);
+            let costTxt;
+            if (!isUnlocked) {
+                costTxt = this.add.text(x, y + 70, '未解锁', { fontSize: '11px', fontFamily: 'Courier New', color: '#ff6644' }).setOrigin(0.5).setDepth(402);
+            } else if (lv >= maxLv) {
+                costTxt = this.add.text(x, y + 70, '已满级', { fontSize: '11px', fontFamily: 'Courier New', color: '#ffdd44' }).setOrigin(0.5).setDepth(402);
+            } else {
+                costTxt = this.add.text(x, y + 70, `${cost} 魂石`, {
+                    fontSize: '12px', fontFamily: 'Courier New',
+                    color: canAfford ? '#ffd700' : '#666', fontWeight: 'bold'
+                }).setOrigin(0.5).setDepth(402);
+            }
+            if (canAfford) {
+                cardBg.on('pointerover', () => cardBg.setStrokeStyle(5, 0xffffff));
+                cardBg.on('pointerout', () => cardBg.setStrokeStyle(3, p.color));
+                cardBg.on('pointerdown', () => {
+                    sd.soulStones -= cost;
+                    sd.upgrades[p.key] = lv + 1;
+                    SaveData.save(sd);
+                    this.audio.play('levelup');
+                    this.showUpgradesPanel();
+                });
+            }
+            this.menuElements.push(cardBg, icon, name, pillarTxt, lvTxt, descTxt, costTxt);
+        });
+
+        // v5：重置加点按钮（免费 respec）
+        const resetBtn = this.add.rectangle(GW / 2 - 100, GH - 55, 160, 36, 0x441133, 0.95)
+            .setStrokeStyle(2, 0xff4488).setInteractive().setDepth(401);
+        const resetTxt = this.add.text(GW / 2 - 100, GH - 55, '↻ 重置加点', {
+            fontSize: '14px', fontFamily: 'Courier New', color: '#ff88aa', fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        resetBtn.on('pointerover', () => resetBtn.setStrokeStyle(3, 0xffffff));
+        resetBtn.on('pointerout', () => resetBtn.setStrokeStyle(2, 0xff4488));
+        resetBtn.on('pointerdown', () => {
+            // 退还所有魂石
+            let refunded = 0;
+            Object.keys(sd.upgrades).forEach(k => {
+                const lv = sd.upgrades[k];
+                for (let i = 0; i < lv; i++) {
+                    const branch = branches.find(b => b.key === k);
+                    if (branch) refunded += Math.floor(branch.costBase * Math.pow(i + 1, 1.6));
+                }
+                sd.upgrades[k] = 0;
+            });
+            sd.soulStones = (sd.soulStones || 0) + refunded;
+            SaveData.save(sd);
+            this.audio.play('levelup');
+            this.showUpgradesPanel();
+        });
+
+        const back = this.add.text(GW / 2 + 100, GH - 55, '◀ 返回主菜单', {
+            fontSize: '16px', fontFamily: 'Courier New', color: '#66ff66', stroke: '#000', strokeThickness: 2
+        }).setOrigin(0.5).setInteractive().setDepth(401);
+        back.on('pointerdown', () => this.showMainMenu());
+        this.menuElements.push(resetBtn, resetTxt, back);
     }
 
     getDailyModifiers(seed) {
@@ -3046,12 +5111,64 @@ class GameScene extends Phaser.Scene {
         this.runtime.weaponType = weaponType;
         this.runtime.weapon = WeaponFactory.create(weaponType, this.runtime);
         this.runtime.skill = SkillFactory.create(weaponType);
+        // 从存档加载区域进度
+        if (typeof this.saveData.currentRegion === 'number') {
+            this.runtime.currentRegion = this.saveData.currentRegion;
+        }
+        if (Array.isArray(this.saveData.regionCleared)) {
+            this.runtime.regionCleared = this.saveData.regionCleared.slice();
+        }
+        // 从存档加载武器技能槽选择
+        if (this.saveData.weaponSkills && typeof this.saveData.weaponSkills === 'object') {
+            this.runtime.weaponSkills = this.saveData.weaponSkills;
+        }
         if (this.selectedDifficulty) {
             this.runtime.difficulty = this.selectedDifficulty.mult;
             this.runtime.difficultyName = this.selectedDifficulty.name;
         }
         this.weaponLevels = { sword: 1, axe: 1, staff: 1, bow: 1, wand: 1 };
         this.weaponExp = { sword: 0, axe: 0, staff: 0, bow: 0, wand: 0 };
+
+        // ===== v5 应用局外养成效果（铁匠铺武器等级 + 10分支加点）=====
+        const sd = this.saveData;
+        sd.upgrades = sd.upgrades || {
+            bloodlust: 0, berserk: 0, ironwall: 0, immortal: 0,
+            shadowstep: 0, gale: 0, greed: 0, sage: 0, element: 0, summon: 0
+        };
+        sd.weaponLevels = sd.weaponLevels || {};
+        const smithyLv = (sd.weaponLevels[weaponType] || 0);
+        // v5：10 分支等级
+        const u = sd.upgrades;
+        const bloodLv = u.bloodlust || 0, berserkLv = u.berserk || 0;
+        const ironLv = u.ironwall || 0, immortalLv = u.immortal || 0;
+        const shadowLv = u.shadowstep || 0, galeLv = u.gale || 0;
+        const greedLv = u.greed || 0, sageLv = u.sage || 0;
+        const elementLv = u.element || 0, summonLv = u.summon || 0;
+        // 武器永久强化：每级 +10% 基础伤害
+        if (this.runtime.weapon && this.runtime.weapon.baseDmg) {
+            this.runtime.weapon.baseDmg *= (1 + 0.10 * smithyLv);
+        }
+        // 存储所有分支等级供其他系统使用
+        this.runtime.upgradeBonus = u;
+        this.runtime._vitalityLv = ironLv;  // 铁壁影响生命
+        this.runtime._agilityLv = galeLv;   // 疾风影响移速攻速
+        this.runtime._wisdomLv = sageLv;    // 智者影响经验/商店
+        // v5：新增分支标记
+        this.runtime._bloodlustLv = bloodLv;
+        this.runtime._berserkLv = berserkLv;
+        this.runtime._immortalLv = immortalLv;
+        this.runtime._shadowstepLv = shadowLv;
+        this.runtime._greedLv = greedLv;
+        this.runtime._elementLv = elementLv;
+        this.runtime._summonLv = summonLv;
+        // v5：复活次数 = 不朽等级
+        this.runtime._reviveCharges = immortalLv;
+        this.runtime._ironwallShieldApplied = 0;
+        this.runtime._scene = this;
+        // v5：火伤附魔加成（每级 +5% 火伤概率，固定 3 秒燃烧）
+        this.runtime._elementBurnDps = elementLv > 0 ? 4 + elementLv * 3 : 0;
+        this.runtime._elementBurnChance = elementLv > 0 ? 0.25 + elementLv * 0.1 : 0;
+
         this.runtime.updateMaxHp();
         this.runtime.hp = this.runtime.maxHp;
 
@@ -3077,12 +5194,31 @@ class GameScene extends Phaser.Scene {
             m.spawn(0, 0);
             this.minions.push(m);
         }
+        // v5 影术加点：召唤暗影分身（每级 +1 个，最多 3 个）
+        if (summonLv > 0) {
+            const shadowCount = Math.min(3, summonLv);
+            for (let i = 0; i < shadowCount; i++) {
+                const sm = new Minion(this, 'shadow');
+                sm.orbitRadius = 75 + i * 25;
+                sm.orbitAngle = (i / shadowCount) * Math.PI * 2;
+                sm.damage = 15 + summonLv * 5;
+                sm.spawn(0, 0);
+                this.minions.push(sm);
+            }
+        }
 
         this.gameState = 'playing';
         this.startTime = this.time.now;
         this.lastWeaponSwitch = -2000;
         this.saveData.totalRuns++;
+        this.saveData.runCount = (this.saveData.runCount || 0) + 1; // 游戏轮次
+        this.saveData.storyFlags = this.saveData.storyFlags || {};
         SaveData.save(this.saveData);
+
+        // 触发当前区域剧情
+        this.time.delayedCall(1500, () => {
+            this.startChapterQuest();
+        });
 
         this.audio.play('levelup');
         this.cameras.main.flash(500, 255, 255, 255);
@@ -3105,7 +5241,6 @@ class GameScene extends Phaser.Scene {
             this.audio.play('chapter');
             this.chapterText.setText(`第${ch + 1}章: ${Chapters[ch].name}`);
             this.cameras.main.flash(800, Chapters[ch].color || 0xffffff, 50);
-            this.cameras.main.shake(600, 0.012);
             const nextCh = Chapters[ch + 1];
             if (nextCh) {
                 const remain = nextCh.timeStart - gT;
@@ -3128,7 +5263,6 @@ class GameScene extends Phaser.Scene {
             this.rageTimer = 8000;
             this.cameras.main.flash(300, 255, 100, 0);
             this.showCenterText('🔥 狂暴模式！🔥', '#ff4400', 1500);
-            this.cameras.main.shake(400, 0.015);
             this.particles.explosion(this.player.x, this.player.y, 60, 0xff4400);
         }
         if (this.rageMode) {
@@ -3167,6 +5301,86 @@ class GameScene extends Phaser.Scene {
 
         this.enemyManager.update(gT, delta);
         this.bossManager.update(gT, delta);
+
+        // 更新任务目标位置和方向箭头
+        if (this.questTargets) {
+            this.questTargets.forEach((qt, idx) => {
+                if (qt.activated) return;
+                // 更新屏幕坐标
+                const sx = qt.worldX - this.playerWorldX + GW / 2;
+                const sy = qt.worldY - this.playerWorldY + GH / 2;
+                if (qt.obj) { qt.obj.x = sx; qt.obj.y = sy; }
+
+                // v5：5 秒持续激活机制
+                const dPlayer = Phaser.Math.Distance.Between(qt.worldX, qt.worldY, this.playerWorldX, this.playerWorldY);
+                const inRange = dPlayer < 55;
+                if (inRange) {
+                    qt.activating = true;
+                    qt.progress += delta;
+                    // 激活期间每 1.2 秒生成守卫
+                    if (gT - qt.lastGuardSpawn > 1200) {
+                        qt.lastGuardSpawn = gT;
+                        const region = REGIONS[this.runtime.currentRegion];
+                        const ga = Math.random() * Math.PI * 2;
+                        const gd = 100 + Math.random() * 60;
+                        const e = new Enemy(this, region.enemyPool[Math.floor(Math.random() * region.enemyPool.length)]);
+                        e.spawn(qt.worldX + Math.cos(ga) * gd, qt.worldY + Math.sin(ga) * gd);
+                        if (Math.random() < 0.35) e.setElite(1);
+                        this.enemyManager.enemies.push(e);
+                    }
+                    // 进度环显示
+                    if (qt.progressRing) {
+                        const ratio = Math.min(1, qt.progress / qt.activateTime);
+                        qt.progressRing.setStrokeStyle(3, 0xffee88, 0.9);
+                        qt.progressRing.setScale(1 + ratio * 0.3);
+                    }
+                    if (qt.progressText) {
+                        const sec = Math.max(0, (qt.activateTime - qt.progress) / 1000).toFixed(1);
+                        qt.progressText.setText(`激活中 ${sec}s`);
+                    }
+                    // 完成激活
+                    if (qt.progress >= qt.activateTime) {
+                        this.activateQuestTarget(qt, idx);
+                        return;
+                    }
+                } else {
+                    qt.activating = false;
+                    // 离开时进度衰减（每秒 -500ms，但不清零）
+                    qt.progress = Math.max(0, qt.progress - delta * 0.5);
+                    if (qt.progressText) {
+                        if (qt.progress > 0) {
+                            qt.progressText.setText(`已中断 ${(qt.progress / 1000).toFixed(1)}s/5.0s`);
+                        } else {
+                            qt.progressText.setText('');
+                        }
+                    }
+                    if (qt.progressRing && qt.progress === 0) {
+                        qt.progressRing.setStrokeStyle(2, 0xffee88, 0);
+                    }
+                }
+
+                // 如果在屏幕外，显示方向箭头
+                const margin = 50;
+                const onScreen = sx > margin && sx < GW - margin && sy > margin && sy < GH - margin;
+                if (!onScreen) {
+                    if (!qt.arrow) {
+                        qt.arrow = this.add.text(0, 0, '➤', { fontSize: '24px', fill: '#44ff88' });
+                        qt.arrow.setDepth(200);
+                    }
+                    // 钳制到屏幕边缘
+                    const clampedX = Math.max(margin, Math.min(GW - margin, sx));
+                    const clampedY = Math.max(margin, Math.min(GH - margin, sy));
+                    qt.arrow.x = clampedX;
+                    qt.arrow.y = clampedY;
+                    // 计算角度
+                    const angle = Math.atan2(sy - GH / 2, sx - GW / 2);
+                    qt.arrow.setRotation(angle);
+                    qt.arrow.setVisible(true);
+                } else {
+                    if (qt.arrow) qt.arrow.setVisible(false);
+                }
+            });
+        }
 
         this.projectiles.forEach(p => p.update(delta, time));
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -3283,6 +5497,8 @@ class GameScene extends Phaser.Scene {
         if (this.dashCooldown > 0) this.dashCooldown -= delta;
 
         let speed = 240 * (1 + (s.speed || 0) * 0.12);
+        // 敏捷加点：每级 +5% 移速
+        if (this.runtime._agilityLv) speed *= (1 + 0.05 * this.runtime._agilityLv);
         if (this.rageMode) speed *= 1.4;
         if (this.runtime.slowTimer > 0) speed *= 0.5;
         if (this.runtime.stunTimer > 0) {
@@ -3305,16 +5521,42 @@ class GameScene extends Phaser.Scene {
             this.playerWorldX = Math.max(-WS / 2, Math.min(WS / 2, this.playerWorldX));
             this.playerWorldY = Math.max(-WS / 2, Math.min(WS / 2, this.playerWorldY));
 
-            const bob = Math.sin(this.time.now * 0.018) * 3;
+            // 行走：上下颠簸 + 身体挤压 + 双腿交替摆动
+            this._walkPhase += delta * 0.014;
+            const bob = Math.sin(this._walkPhase * 2) * 3;
             this.player.y = GH / 2 + bob;
-
             if (this.playerBody) {
-                const squash = 1 + Math.sin(this.time.now * 0.018) * 0.03;
+                const squash = 1 + Math.sin(this._walkPhase * 2) * 0.04;
                 this.playerBody.scaleY = squash;
             }
+            if (this.playerLegL && this.playerLegR) {
+                this.playerLegL.rotation = Math.sin(this._walkPhase) * 0.5;
+                this.playerLegR.rotation = -Math.sin(this._walkPhase) * 0.5;
+            }
+            // 披风飘动（行走时更剧烈）
+            if (this.playerCape) this.playerCape.rotation = -0.1 + Math.sin(this._walkPhase * 1.5) * 0.12;
+            if (this.playerCapeDark) this.playerCapeDark.rotation = -0.1 + Math.sin(this._walkPhase * 1.5) * 0.12;
         } else {
-            this.player.y = GH / 2;
-            if (this.playerBody) this.playerBody.scaleY = 1;
+            // 待机：轻微呼吸
+            this.player.y = GH / 2 + Math.sin(this.time.now * 0.004) * 1.5;
+            if (this.playerBody) this.playerBody.scaleY = 1 + Math.sin(this.time.now * 0.004) * 0.02;
+            if (this.playerLegL) this.playerLegL.rotation = 0;
+            if (this.playerLegR) this.playerLegR.rotation = 0;
+            // 披风轻摆
+            if (this.playerCape) this.playerCape.rotation = Math.sin(this.time.now * 0.003) * 0.05;
+            if (this.playerCapeDark) this.playerCapeDark.rotation = Math.sin(this.time.now * 0.003) * 0.05;
+        }
+
+        // 眨眼：每 3-5 秒眨一次
+        this._blinkTimer -= delta;
+        if (this._blinkTimer <= 0) {
+            this._blinkTimer = 3000 + Math.random() * 2000;
+            if (this.playerEyes) this.playerEyes.forEach(e => e.scaleY = 0.2);
+            if (this.playerEyeShines) this.playerEyeShines.forEach(e => e.setVisible(false));
+            this.time.delayedCall(120, () => {
+                if (this.playerEyes) this.playerEyes.forEach(e => e.scaleY = 1);
+                if (this.playerEyeShines) this.playerEyeShines.forEach(e => e.setVisible(true));
+            });
         }
 
         if (this.runtime.invincibleTimer > 0) {
@@ -3345,10 +5587,11 @@ class GameScene extends Phaser.Scene {
         }
 
         this.lastDashDir = { x: dx, y: dy };
-        this.dashTimer = 250;
-        this.runtime.invincibleTimer = Math.max(this.runtime.invincibleTimer, 250);
+        // v5 影步加点：每级 +80ms 冲刺无敌时间和 +100ms 冲刺距离
+        const shadowLv = this.runtime._shadowstepLv || 0;
+        this.dashTimer = 250 + shadowLv * 100;
+        this.runtime.invincibleTimer = Math.max(this.runtime.invincibleTimer, 250 + shadowLv * 80);
         this.audio.play('dash');
-        this.cameras.main.shake(150, 0.005);
         this.particles.explosion(this.player.x, this.player.y, 30, 0xffff44);
     }
 
@@ -3386,7 +5629,6 @@ class GameScene extends Phaser.Scene {
         this.time.delayedCall(80, () => {
             this.particles.explosion(this.player.x, this.player.y, 25, 0xff00ff);
         });
-        this.cameras.main.shake(120, 0.006);
         this.audio.play('dash');
     }
 
@@ -3405,7 +5647,6 @@ class GameScene extends Phaser.Scene {
         this.cameras.main.flash(400, 0, 200, 255);
         this.showCenterText('🛡 应急护盾！🛡', '#00ddff', 1200);
         this.particles.explosion(this.player.x, this.player.y, 80, 0x00ffff);
-        this.cameras.main.shake(300, 0.012);
         this.audio.play('levelup');
     }
 
@@ -3425,19 +5666,28 @@ class GameScene extends Phaser.Scene {
         }
         const g = this.miniMapGraphics;
         g.clear();
-        const mmX = GW - 130, mmY = 100, mmW = 110, mmH = 110;
-        const scale = 0.08;
+        // 增大迷你地图：从 110x110 增大到 160x160，位置调整到更明显
+        const mmX = GW - 170, mmY = 80, mmW = 160, mmH = 160;
+        const scale = 0.12; // 增大缩放比例，显示更大范围
 
-        g.fillStyle(0x0a0a18, 0.85);
+        // 背景更不透明，边框更粗
+        g.fillStyle(0x0a0a18, 0.92);
         g.fillRect(mmX, mmY, mmW, mmH);
-        g.lineStyle(2, 0x444488, 1);
+        g.lineStyle(3, 0x6666aa, 1);
         g.strokeRect(mmX, mmY, mmW, mmH);
+        
+        // 添加标题文字背景条
+        g.fillStyle(0x222244, 0.95);
+        g.fillRect(mmX, mmY, mmW, 18);
+        g.fillStyle(0xffffff, 0.9);
+        g.fillRoundedRect(mmX + 2, mmY + 2, mmW - 4, 14, 2);
 
         const toMm = (wx, wy) => ({
             x: mmX + mmW / 2 + (wx - this.playerWorldX) * scale,
             y: mmY + mmH / 2 + (wy - this.playerWorldY) * scale
         });
 
+        // 宝箱：增大显示尺寸
         if (this.treasureChests) {
             for (const chest of this.treasureChests) {
                 if (!chest.alive) continue;
@@ -3447,29 +5697,37 @@ class GameScene extends Phaser.Scene {
                               chest.rarity === 'epic' ? 0xcc66ff :
                               chest.rarity === 'rare' ? 0x4488ff : 0xffffff;
                 g.fillStyle(color, 1);
-                g.fillRect(p.x - 2, p.y - 2, 4, 4);
+                g.fillRect(p.x - 3, p.y - 3, 6, 6); // 从 4x4 增大到 6x6
             }
         }
 
+        // 敌人：增大显示尺寸
         if (this.enemyManager) {
             for (const e of this.enemyManager.enemies) {
                 if (!e.alive) continue;
                 const p = toMm(e.worldX, e.worldY);
                 if (p.x < mmX || p.x > mmX + mmW || p.y < mmY || p.y > mmY + mmH) continue;
-                g.fillStyle(0xff4444, 0.9);
-                g.fillCircle(p.x, p.y, 1.5);
+                g.fillStyle(0xff4444, 0.95);
+                g.fillCircle(p.x, p.y, 2.5); // 从 1.5 增大到 2.5
             }
         }
 
+        // BOSS：增大显示尺寸
         if (this.bossManager && this.bossManager.boss && this.bossManager.boss.alive) {
             const b = this.bossManager.boss;
             const p = toMm(b.worldX, b.worldY);
             g.fillStyle(0xff0000, 1);
-            g.fillCircle(p.x, p.y, 3);
+            g.fillCircle(p.x, p.y, 5); // 从 3 增大到 5
+            // 添加BOSS光环
+            g.lineStyle(2, 0xff0000, 0.6);
+            g.strokeCircle(p.x, p.y, 8);
         }
 
+        // 玩家：增大显示尺寸，添加光环
         g.fillStyle(this.rageMode ? 0xff4400 : 0x00ff88, 1);
-        g.fillCircle(mmX + mmW / 2, mmY + mmH / 2, 2);
+        g.fillCircle(mmX + mmW / 2, mmY + mmH / 2, 4); // 从 2 增大到 4
+        g.lineStyle(1, 0xffffff, 0.8);
+        g.strokeCircle(mmX + mmW / 2, mmY + mmH / 2, 6);
     }
 
     drawOffScreenIndicators() {
@@ -3578,7 +5836,10 @@ class GameScene extends Phaser.Scene {
         if (this.runtime.stunTimer > 0) return;
 
         const cd = w.getCooldown(this.runtime.spec, wlvl);
-        if (time - w.lastAttack < cd) return;
+        // v5 疾风加点：每级 +4% 攻速
+        const galeLv = this.runtime._agilityLv || 0;
+        const actualCd = cd / (1 + 0.04 * galeLv);
+        if (time - w.lastAttack < actualCd) return;
         w.attack(time);
 
         let angle;
@@ -3663,7 +5924,7 @@ class GameScene extends Phaser.Scene {
                 break;
         }
 
-        this.screenShake = Math.max(this.screenShake, isCrit ? 3 : 1);
+        // 移除暴击屏幕震动（用户反馈过于频繁）
     }
 
     getElementEffect(wlvl) {
@@ -3735,20 +5996,29 @@ class GameScene extends Phaser.Scene {
         const lifeSteal = w.getLifeSteal(wlvl);
         this.particles.slash(GW / 2, GH / 2, angle, w.color, range, arc);
 
+        // v5 狂暴加点：HP < 30% 时每级 +12% 伤害
+        let dmgBonus = 1;
+        const berserkLv = this.runtime._berserkLv || 0;
+        if (berserkLv > 0 && this.runtime.hp < this.runtime.maxHp * 0.3) {
+            dmgBonus *= (1 + 0.12 * berserkLv);
+        }
+        const finalDamage = Math.floor(damage * dmgBonus);
+
         let hitCount = 0;
         const hits = this.enemyManager.getEnemiesInArc(
             this.playerWorldX, this.playerWorldY, range, angle, arc
         );
         hits.forEach(e => {
-            const died = e.takeDamage(damage, isCrit, elementEffect.armorPierce || 0);
+            const died = e.takeDamage(finalDamage, isCrit, elementEffect.armorPierce || 0);
             hitCount++;
-            this.applyElementEffect(e, elementEffect, damage);
+            this.applyElementEffect(e, elementEffect, finalDamage);
+            this.applyV5ElementBurn(e);
             this.particles.hit(
                 e.worldX - this.playerWorldX + GW / 2,
                 e.worldY - this.playerWorldY + GH / 2,
                 w.color, 8, 3
             );
-            if (died) this.addWeaponExp(this.runtime.weaponType, 2);
+            if (died) this.addWeaponExp(this.runtime.weaponType, 1);
         });
 
         if (this.bossManager.boss && this.bossManager.boss.alive) {
@@ -3760,24 +6030,92 @@ class GameScene extends Phaser.Scene {
                 while (diff > Math.PI) diff -= Math.PI * 2;
                 while (diff < -Math.PI) diff += Math.PI * 2;
                 if (Math.abs(diff) <= arc / 2) {
-                    const bossDmg = this.bossDamageBuff ? Math.floor(damage * 1.5) : damage;
+                    const bossDmg = this.bossDamageBuff ? Math.floor(finalDamage * 1.5) : finalDamage;
                     b.takeDamage(bossDmg, isCrit, elementEffect.armorPierce || 0);
                     hitCount++;
                     this.applyElementEffect(b, elementEffect, bossDmg);
+                    this.applyV5ElementBurn(b);
                 }
             }
         }
+        // 命中幻影/分裂体
+        this.bossManager.alivePhantoms.forEach(b => {
+            const d = Phaser.Math.Distance.Between(this.playerWorldX, this.playerWorldY, b.worldX, b.worldY);
+            if (d <= range) {
+                const ba = Math.atan2(b.worldY - this.playerWorldY, b.worldX - this.playerWorldX);
+                let diff = ba - angle;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                if (Math.abs(diff) <= arc / 2) {
+                    const bossDmg = this.bossDamageBuff ? Math.floor(finalDamage * 1.5) : finalDamage;
+                    b.takeDamage(bossDmg, isCrit, elementEffect.armorPierce || 0);
+                    hitCount++;
+                    this.applyElementEffect(b, elementEffect, bossDmg);
+                    this.applyV5ElementBurn(b);
+                }
+            }
+        });
 
         if (lifeSteal > 0 && hitCount > 0) {
-            const heal = Math.floor(damage * lifeSteal * hitCount);
+            const heal = Math.floor(finalDamage * lifeSteal * hitCount);
             if (heal > 0) {
                 this.runtime.heal(heal);
                 this.particles.healEffect(GW / 2, GH / 2 - 30);
             }
         }
+        // v5 嗜血加点：暴击时回血（每级 4% 伤害）
+        const bloodLv = this.runtime._bloodlustLv || 0;
+        if (isCrit && bloodLv > 0 && hitCount > 0) {
+            const heal = Math.floor(finalDamage * 0.04 * bloodLv * hitCount);
+            if (heal > 0) {
+                this.runtime.heal(heal);
+                this.particles.healEffect(GW / 2, GH / 2 - 30);
+                this.showDamageNumber(GW / 2, GH / 2 - 50, heal, true, false, '#ff6688', '+');
+            }
+        }
+        // v5 武器形态进化：form 3（分身协同）/ form 4（黑炎附魔）
+        const form = w.getForm ? w.getForm() : 0;
+        if (form >= 3 && hitCount > 0 && Math.random() < 0.35) {
+            // 分身追加一次攻击（50% 伤害）
+            const shadowDmg = Math.floor(finalDamage * 0.5);
+            const shadowHits = this.enemyManager.getEnemiesInArc(
+                this.playerWorldX, this.playerWorldY, range, angle, arc
+            );
+            shadowHits.forEach(e => {
+                if (e.alive) {
+                    e.takeDamage(shadowDmg, false, elementEffect.armorPierce || 0);
+                    this.particles.hit(
+                        e.worldX - this.playerWorldX + GW / 2,
+                        e.worldY - this.playerWorldY + GH / 2,
+                        0x8844cc, 6, 2
+                    );
+                }
+            });
+            this.particles.slash(GW / 2, GH / 2, angle, 0x8844cc, range, arc);
+            this.showCenterText('◈ 影分身追击', '#aa66ff', 600);
+        }
+        if (form >= 4 && hitCount > 0) {
+            // 黑炎：每击必触发燃烧 + 视觉特效
+            this.particles.explosion(GW / 2, GH / 2, 15, 0x660066);
+            hits.forEach(e => {
+                if (e.alive && e.applyBurn) {
+                    e.applyBurn(finalDamage * 0.2, 4000);
+                }
+            });
+        }
 
-        if (hits.length > 0) this.addWeaponExp(this.runtime.weaponType, 1);
+        // 命中不再给武器经验，仅击杀给
         if (isCrit) this.audio.play('crit');
+    }
+
+    // v5 火伤附魔：基于 element 加点概率触发燃烧
+    applyV5ElementBurn(target) {
+        if (!target || !target.alive) return;
+        const chance = this.runtime._elementBurnChance || 0;
+        const dps = this.runtime._elementBurnDps || 0;
+        if (dps > 0 && Math.random() < chance && target.applyBurn) {
+            target.applyBurn(dps, 3000);
+        }
     }
 
     applyElementEffect(target, effect, baseDamage) {
@@ -3806,6 +6144,15 @@ class GameScene extends Phaser.Scene {
         const range = w.getRange(wlvl);
         const projCount = w.getProjectileCount(wlvl);
 
+        // v5 狂暴加点：HP < 30% 时每级 +12% 伤害
+        let dmgBonus = 1;
+        const berserkLv = this.runtime._berserkLv || 0;
+        if (berserkLv > 0 && this.runtime.hp < this.runtime.maxHp * 0.3) {
+            dmgBonus *= (1 + 0.12 * berserkLv);
+        }
+        const finalDamage = Math.floor(damage * dmgBonus);
+        let hitCount = 0;
+
         for (let i = 0; i < projCount; i++) {
             const spread = (i - (projCount - 1) / 2) * 0.12;
             const ang = angle + spread;
@@ -3821,9 +6168,11 @@ class GameScene extends Phaser.Scene {
                 this.playerWorldX, this.playerWorldY, endX, endY, w.width
             );
             hits.forEach(e => {
-                const died = e.takeDamage(damage, isCrit, elementEffect.armorPierce || 0);
-                this.applyElementEffect(e, elementEffect, damage);
-                if (died) this.addWeaponExp(this.runtime.weaponType, 2);
+                const died = e.takeDamage(finalDamage, isCrit, elementEffect.armorPierce || 0);
+                this.applyElementEffect(e, elementEffect, finalDamage);
+                this.applyV5ElementBurn(e);
+                hitCount++;
+                if (died) this.addWeaponExp(this.runtime.weaponType, 1);
             });
 
             if (this.bossManager.boss && this.bossManager.boss.alive) {
@@ -3832,14 +6181,40 @@ class GameScene extends Phaser.Scene {
                     b.worldX, b.worldY,
                     this.playerWorldX, this.playerWorldY, endX, endY
                 ) <= w.width + b.hitRadius) {
-                    const bossDmg = this.bossDamageBuff ? Math.floor(damage * 1.5) : damage;
+                    const bossDmg = this.bossDamageBuff ? Math.floor(finalDamage * 1.5) : finalDamage;
                     b.takeDamage(bossDmg, isCrit, elementEffect.armorPierce || 0);
                     this.applyElementEffect(b, elementEffect, bossDmg);
+                    this.applyV5ElementBurn(b);
+                    hitCount++;
                 }
+            }
+            // 命中幻影/分裂体
+            this.bossManager.alivePhantoms.forEach(b => {
+                if (this.enemyManager.pointToLineDistance(
+                    b.worldX, b.worldY,
+                    this.playerWorldX, this.playerWorldY, endX, endY
+                ) <= w.width + b.hitRadius) {
+                    const bossDmg = this.bossDamageBuff ? Math.floor(finalDamage * 1.5) : finalDamage;
+                    b.takeDamage(bossDmg, isCrit, elementEffect.armorPierce || 0);
+                    this.applyElementEffect(b, elementEffect, bossDmg);
+                    this.applyV5ElementBurn(b);
+                    hitCount++;
+                }
+            });
+        }
+
+        // v5 嗜血加点：暴击时回血（每级 4% 伤害）
+        const bloodLv = this.runtime._bloodlustLv || 0;
+        if (isCrit && bloodLv > 0 && hitCount > 0) {
+            const heal = Math.floor(finalDamage * 0.04 * bloodLv * hitCount);
+            if (heal > 0) {
+                this.runtime.heal(heal);
+                this.particles.healEffect(GW / 2, GH / 2 - 30);
+                this.showDamageNumber(GW / 2, GH / 2 - 50, heal, true, false, '#ff6688', '+');
             }
         }
 
-        this.addWeaponExp(this.runtime.weaponType, 1);
+        // 命中不再给武器经验
         if (isCrit) this.audio.play('crit');
     }
 
@@ -3853,7 +6228,7 @@ class GameScene extends Phaser.Scene {
                 pierce: pierce, size: 6, elementEffect: elementEffect
             }
         ));
-        this.addWeaponExp(this.runtime.weaponType, 1);
+        // 命中不再给武器经验
     }
 
     performWandAttack(angle, damage, isCrit, w, wlvl = 1, elementEffect = {}) {
@@ -3873,7 +6248,7 @@ class GameScene extends Phaser.Scene {
                 }
             ));
         }
-        this.addWeaponExp(this.runtime.weaponType, 1);
+        // 命中不再给武器经验
     }
 
     addWeaponExp(weaponType, amount) {
@@ -3882,16 +6257,93 @@ class GameScene extends Phaser.Scene {
         if (cur >= 10) return;
         if (!this.weaponExp[weaponType]) this.weaponExp[weaponType] = 0;
         this.weaponExp[weaponType] += amount;
-        const needTable = [30, 50, 80, 120, 180, 260, 380, 550, 800];
+        const needTable = [40, 70, 110, 170, 250, 360, 520, 750, 1100];
         const need = needTable[cur - 1] || 999;
         if (this.weaponExp[weaponType] >= need) {
             this.weaponExp[weaponType] -= need;
             this.weaponLevels[weaponType] = Math.min(10, cur + 1);
-            this.showCenterText(`⚔ ${WeaponFactory.info(weaponType).name} Lv.${this.weaponLevels[weaponType]}!`,
-                WeaponFactory.info(weaponType).color, 1000);
-            this.particles.explosion(GW / 2, GH / 2, 40, WeaponFactory.info(weaponType).color);
+            const info = WeaponFactory.info(weaponType);
+            const colorHex = '#' + info.color.toString(16).padStart(6, '0');
+            // 显示具体数值变化
+            const tmpW = WeaponFactory.create(weaponType, this.runtime);
+            const oldDmg = tmpW.baseDmg + tmpW.getDamageGrowth(cur);
+            const newDmg = tmpW.baseDmg + tmpW.getDamageGrowth(this.weaponLevels[weaponType]);
+            this.showCenterText(
+                `${info.name} Lv.${this.weaponLevels[weaponType]}! 攻击力 ${oldDmg}→${newDmg}`,
+                colorHex
+            );
+            this.particles.explosion(GW / 2, GH / 2, 40, info.color);
             this.audio.play('levelup');
+            // 升级到Lv3/Lv6/Lv9时触发技能选择
+            const newLevel = this.weaponLevels[weaponType];
+            if (newLevel === 3 || newLevel === 6 || newLevel === 9) {
+                const slotIdx = newLevel === 3 ? 0 : (newLevel === 6 ? 1 : 2);
+                this.showWeaponSkillChoice(weaponType, slotIdx);
+            }
         }
+    }
+
+    showWeaponSkillChoice(weaponType, slotIdx) {
+        const options = WEAPON_SKILLS[weaponType];
+        if (!options || !options[slotIdx]) return;
+        const choices = options[slotIdx];
+
+        // 暂停游戏
+        this.paused = true;
+        this._enterPause();
+
+        // 创建半透明背景
+        const bg = this.add.rectangle(0, 0, GW, GH, 0x000000, 0.8);
+        bg.setOrigin(0, 0).setDepth(2000);
+
+        const info = WeaponFactory.info(weaponType);
+        const colorHex = '#' + info.color.toString(16).padStart(6, '0');
+
+        // 标题
+        const title = this.add.text(GW / 2, 80, `${info.name} 技能选择`, {
+            fontSize: '28px', fill: colorHex
+        }).setOrigin(0.5).setDepth(2001);
+
+        // 副标题
+        const subtitle = this.add.text(GW / 2, 120, `选择一个技能（槽位${slotIdx + 1}）`, {
+            fontSize: '16px', fill: '#aaaaaa'
+        }).setOrigin(0.5).setDepth(2001);
+
+        // 选项卡片
+        const cardW = 300, cardH = 200;
+        const startY = 180;
+        const cards = [];
+        choices.forEach((choice, i) => {
+            const x = GW / 2 + (i - 0.5) * (cardW + 40);
+            const card = this.add.rectangle(x, startY + cardH / 2, cardW, cardH, 0x222244, 0.9)
+                .setStrokeStyle(2, 0x4466aa).setDepth(2001);
+            const name = this.add.text(x, startY + 30, choice.name, {
+                fontSize: '22px', fill: '#ffdd44'
+            }).setOrigin(0.5).setDepth(2002);
+            const desc = this.add.text(x, startY + 90, choice.desc, {
+                fontSize: '16px', fill: '#cccccc', align: 'center', wordWrap: { width: cardW - 20 }
+            }).setOrigin(0.5).setDepth(2002);
+
+            card.setInteractive();
+            card.on('pointerover', () => card.setFillStyle(0x334466, 0.9));
+            card.on('pointerout', () => card.setFillStyle(0x222244, 0.9));
+            card.on('pointerdown', () => {
+                // 记录选择
+                if (!this.runtime.weaponSkills[weaponType]) {
+                    this.runtime.weaponSkills[weaponType] = [null, null, null];
+                }
+                this.runtime.weaponSkills[weaponType][slotIdx] = choice.id;
+                // 保存到存档
+                this.saveData.weaponSkills = this.runtime.weaponSkills;
+                SaveData.save(this.saveData);
+                // 清理UI
+                [bg, title, subtitle, ...cards].forEach(o => o.destroy());
+                this.paused = false;
+                this._exitPause();
+                this.showCenterText(`获得技能: ${choice.name}!`, '#ffdd44');
+            });
+            cards.push(card, name, desc);
+        });
     }
 
     useSkill() {
@@ -3902,7 +6354,6 @@ class GameScene extends Phaser.Scene {
         s.use(this.time.now - this.startTime);
         this.audio.play('skill');
         this.cameras.main.shake(250, 0.012);
-        this.screenShake = 5;
 
         const w = this.runtime.weapon;
         const baseDmg = w.getSkillDamage(this.weaponLevels[this.runtime.weaponType] || 1, this.runtime.spec);
@@ -3929,6 +6380,10 @@ class GameScene extends Phaser.Scene {
                     const d = Phaser.Math.Distance.Between(this.playerWorldX, this.playerWorldY, this.bossManager.boss.worldX, this.bossManager.boss.worldY);
                     if (d < 130) this.bossManager.boss.takeDamage(baseDmg * 2.8, true);
                 }
+                this.bossManager.alivePhantoms.forEach(b => {
+                    const d = Phaser.Math.Distance.Between(this.playerWorldX, this.playerWorldY, b.worldX, b.worldY);
+                    if (d < 130) b.takeDamage(baseDmg * 2.8, true);
+                });
                 for (let i = 0; i < 4; i++) {
                     setTimeout(() => {
                         this.particles.explosion(
@@ -3947,12 +6402,15 @@ class GameScene extends Phaser.Scene {
                     const d = Phaser.Math.Distance.Between(this.playerWorldX, this.playerWorldY, this.bossManager.boss.worldX, this.bossManager.boss.worldY);
                     if (d < 200) this.bossManager.boss.takeDamage(baseDmg * 3.2, Math.random() < 0.6);
                 }
+                this.bossManager.alivePhantoms.forEach(b => {
+                    const d = Phaser.Math.Distance.Between(this.playerWorldX, this.playerWorldY, b.worldX, b.worldY);
+                    if (d < 200) b.takeDamage(baseDmg * 3.2, Math.random() < 0.6);
+                });
                 for (let i = 0; i < 5; i++) {
                     setTimeout(() => {
                         this.particles.explosion(GW / 2, GH / 2, 80 + i * 40, w.color);
                     }, i * 70);
                 }
-                this.screenShake = 6;
                 break;
 
             case 'staff':
@@ -3967,6 +6425,10 @@ class GameScene extends Phaser.Scene {
                     const d = Phaser.Math.Distance.Between(this.playerWorldX, this.playerWorldY, this.bossManager.boss.worldX, this.bossManager.boss.worldY);
                     if (d < 220) this.bossManager.boss.takeDamage(baseDmg * 1.8, false);
                 }
+                this.bossManager.alivePhantoms.forEach(b => {
+                    const d = Phaser.Math.Distance.Between(this.playerWorldX, this.playerWorldY, b.worldX, b.worldY);
+                    if (d < 220) b.takeDamage(baseDmg * 1.8, false);
+                });
                 for (let i = 0; i < 3; i++) {
                     setTimeout(() => {
                         this.particles.explosion(GW / 2, GH / 2, 100 + i * 50, w.color);
@@ -4035,8 +6497,6 @@ class GameScene extends Phaser.Scene {
         this.runtime.resetCombo();
 
         this.audio.play('hurt');
-        this.cameras.main.shake(200, 0.01);
-        this.screenShake = 4;
         this.showDamageNumber(GW / 2, GH / 2 - 35, actual, false, true);
 
         this.tweens.add({
@@ -4076,13 +6536,32 @@ class GameScene extends Phaser.Scene {
         if (!this.weaponText || !this.runtime.weapon) return;
         const info = WeaponFactory.info(this.runtime.weaponType);
         const lvl = this.weaponLevels[this.runtime.weaponType] || 1;
-        this.weaponText.setText(`${info.icon} ${info.name} Lv.${lvl}`);
+        const promo = (this.runtime.weaponPromotions && this.runtime.weaponPromotions[this.runtime.weaponType]) || 0;
+        // v5：显示武器形态阶段
+        const form = (this.runtime.weapon && this.runtime.weapon.getForm) ? this.runtime.weapon.getForm() : 0;
+        const formMarks = ['', ' Ⅰ', 'Ⅱ', 'Ⅲ', 'Ⅳ'];
+        const stars = promo === 0 ? '' : (promo === 1 ? ' ★' : ' ★★');
+        this.weaponText.setText(`${info.icon} ${info.name} Lv.${lvl}${stars}${formMarks[form] || ''}`);
         if (this.weaponExpBarFill) {
-            const needTable = [30, 50, 80, 120, 180, 260, 380, 550, 800];
+            const needTable = [40, 70, 110, 170, 250, 360, 520, 750, 1100];
             const need = needTable[lvl - 1] || 999;
             const curExp = (this.weaponExp && this.weaponExp[this.runtime.weaponType]) || 0;
             const ratio = Math.max(0, Math.min(1, curExp / need));
             this.weaponExpBarFill.scaleX = ratio;
+        }
+        // 副武器显示
+        if (this.runtime.secondaryWeapon) {
+            if (!this.secondaryWeaponIcon) {
+                this.secondaryWeaponIcon = this.add.text(60, GH - 50, '', { fontSize: '18px' });
+                this.secondaryWeaponIcon.setDepth(100);
+            }
+            const secInfo = WeaponFactory.info(this.runtime.secondaryWeapon);
+            const secPromo = (this.runtime.weaponPromotions && this.runtime.weaponPromotions[this.runtime.secondaryWeapon]) || 0;
+            const secStars = secPromo === 0 ? '' : (secPromo === 1 ? ' ★' : ' ★★');
+            this.secondaryWeaponIcon.setText(`${secInfo.icon} Lv${this.weaponLevels[this.runtime.secondaryWeapon] || 1}${secStars}`);
+            this.secondaryWeaponIcon.setColor('#888888');
+        } else if (this.secondaryWeaponIcon) {
+            this.secondaryWeaponIcon.setText('');
         }
         if (this.blinkCdText) {
             if (this.blinkCooldown > 0) this.blinkCdText.setText(`E 闪现 ${(this.blinkCooldown / 1000).toFixed(1)}s`);
@@ -4108,32 +6587,21 @@ class GameScene extends Phaser.Scene {
     }
 
     updateScreenShake(delta) {
-        if (this.screenShake > 0) {
-            const shakeX = (Math.random() - 0.5) * this.screenShake;
-            const shakeY = (Math.random() - 0.5) * this.screenShake;
-            this.cameras.main.x = shakeX;
-            this.cameras.main.y = shakeY;
-            this.screenShake = Math.max(0, this.screenShake - delta * 0.03);
-        } else {
-            this.cameras.main.x = 0;
-            this.cameras.main.y = 0;
-        }
     }
 
-    showDamageNumber(x, y, damage, isCrit = false, isPlayer = false) {
+    showDamageNumber(x, y, damage, isCrit = false, isPlayer = false, colorOverride = null, prefix = '') {
         const fontSize = isCrit ? (damage > 200 ? '40px' : '32px') : '18px';
-        const color = isPlayer ? '#ff4444' :
-                      isCrit ? (damage > 200 ? '#ff0000' : '#ffff00') : '#ffaa66';
-        const text = this.add.text(x, y, isCrit ? `${damage}!` : `${damage}`, {
+        const color = colorOverride || (isPlayer ? '#ff4444' :
+                      isCrit ? (damage > 200 ? '#ff0000' : '#ffff00') : '#ffaa66');
+        const text = this.add.text(x, y, `${prefix}${damage}${isCrit && !prefix ? '!' : ''}`, {
             fontSize,
             fontFamily: 'Courier New',
             color, stroke: '#000', strokeThickness: 4, fontWeight: 'bold'
         }).setOrigin(0.5).setDepth(250);
 
-        if (isCrit && !isPlayer) {
+        if (isCrit && !isPlayer && !colorOverride) {
             this.particles.critEffect(x, y - 10);
             if (damage > 200) {
-                this.cameras.main.shake(100, 0.005);
                 this.particles.explosion(x, y, 30, 0xffff00);
             }
         }
@@ -4158,17 +6626,65 @@ class GameScene extends Phaser.Scene {
         });
     }
 
+    showStoryDialogue(text, color = '#ffdd88') {
+        // 清理旧对话框
+        if (this._storyElems) this._storyElems.forEach(e => e.destroy());
+        this._storyElems = [];
+        // 创建更醒目的对话框：左侧 NPC 头像 + 右侧文字
+        const boxW = GW - 80, boxH = 140;
+        const boxY = GH - 90;
+        const box = this.add.rectangle(GW / 2, boxY, boxW, boxH, 0x000000, 0.92)
+            .setStrokeStyle(3, 0xddaa55).setDepth(1500);
+        // 左侧 NPC 头像区
+        const portraitBg = this.add.rectangle(GW / 2 - boxW / 2 + 60, boxY, 90, boxH - 16, 0x1a1a2e)
+            .setStrokeStyle(2, 0xddaa55).setDepth(1501);
+        const portrait = this.add.text(GW / 2 - boxW / 2 + 60, boxY, '🧙', { fontSize: '48px' })
+            .setOrigin(0.5).setDepth(1502);
+        // 装饰角标
+        const corner = this.add.text(GW / 2, boxY - boxH / 2 + 8, '◆ 剧情对话 ◆', {
+            fontSize: '13px', fill: '#ddaa55', fontStyle: 'bold'
+        }).setOrigin(0.5, 0).setDepth(1503);
+        const txt = this.add.text(GW / 2 + 50, boxY, text, {
+            fontSize: '18px', fill: color, align: 'left',
+            wordWrap: { width: boxW - 180 }, lineHeight: '26px',
+            stroke: '#000', strokeThickness: 2
+        }).setOrigin(0.5).setDepth(1501);
+        // 入场动画
+        box.setAlpha(0); portraitBg.setAlpha(0); portrait.setAlpha(0); txt.setAlpha(0); corner.setAlpha(0);
+        this.tweens.add({ targets: [box, portraitBg, portrait, txt, corner], alpha: 1, duration: 300, ease: 'Cubic.easeOut' });
+
+        this._storyElems.push(box, portraitBg, portrait, txt, corner);
+        const elems = this._storyElems;
+
+        // 7秒后自动消失
+        this.time.delayedCall(7000, () => {
+            if (this._storyElems !== elems) return; // 已被新对话框替换
+            this.tweens.add({
+                targets: elems, alpha: 0, duration: 500,
+                onComplete: () => { elems.forEach(e => e.destroy()); if (this._storyElems === elems) this._storyElems = []; }
+            });
+        });
+
+        // 点击可跳过
+        box.setInteractive();
+        box.on('pointerdown', () => {
+            if (this._storyElems !== elems) return;
+            elems.forEach(e => e.destroy());
+            this._storyElems = [];
+        });
+    }
+
     onLevelUp() {
         this.particles.levelUp();
         this.audio.play('levelup');
         this.runtime.updateMaxHp();
-        this.cameras.main.shake(400, 0.01);
-        this.screenShake = 3;
+        this.cameras.main.shake(400, 0.006);
         this.showLevelUpChoice();
     }
 
     showLevelUpChoice() {
         this.paused = true;
+        this._enterPause();
 
         const choices = this.getRandomSpecializations(3);
         const bg = this.add.rectangle(0, 0, GW, GH, 0x000000, 0.9).setOrigin(0).setDepth(400);
@@ -4251,34 +6767,49 @@ class GameScene extends Phaser.Scene {
     }
 
     getRandomSpecializations(count) {
+        // 召唤系独立化：无随从时不出现召唤系选项
+        const minionAvailable = this.minions && this.minions.length > 0;
         const weights = Specializations.map(s => {
+            if (s.isMinion && !minionAvailable) return 0;
             const lvl = this.runtime.specLevels[s.id] || 0;
             // 降低已选择专精的权重
             return 1 + Math.max(0, 5 - lvl * 1.5);
         });
-        const total = weights.reduce((a, b) => a + b, 0);
+        // 按路径分组，保证每次选择来自不同路径（避免方向太多看花眼）
+        const byPath = {};
+        Specializations.forEach((s, j) => {
+            if (weights[j] <= 0) return;
+            if (!byPath[s.path]) byPath[s.path] = [];
+            byPath[s.path].push({ spec: s, w: weights[j], idx: j });
+        });
         const result = [];
-        const used = new Set();
-        for (let i = 0; i < count && used.size < Specializations.length; i++) {
+        const usedPaths = new Set();
+        // 每轮从不同路径各选一个
+        for (let i = 0; i < count; i++) {
+            const availPaths = Object.keys(byPath).filter(p => !usedPaths.has(p) && byPath[p].length > 0);
+            if (availPaths.length === 0) break;
+            // 随机选一个未用过的路径
+            const path = availPaths[Math.floor(Math.random() * availPaths.length)];
+            usedPaths.add(path);
+            // 在该路径内按权重选一个
+            const pool = byPath[path];
+            const total = pool.reduce((a, b) => a + b.w, 0);
             let r = Math.random() * total;
-            for (let j = 0; j < Specializations.length; j++) {
-                if (used.has(j)) continue;
-                r -= weights[j];
-                if (r <= 0) {
-                    result.push(Specializations[j]);
-                    used.add(j);
-                    break;
-                }
+            for (const item of pool) {
+                r -= item.w;
+                if (r <= 0) { result.push(item.spec); break; }
             }
         }
-        // 路径多样性
-        const paths = new Set(result.map(s => s.path));
-        if (paths.size < 2 && result.length > 1) {
-            for (let j = 0; j < Specializations.length; j++) {
-                if (!used.has(j) && !paths.has(Specializations[j].path) && paths.size < 3) {
-                    result[result.length - 1] = Specializations[j];
-                    paths.add(Specializations[j].path);
-                    break;
+        // 若不足 count 个（路径不够），从剩余里补
+        if (result.length < count) {
+            const usedIdx = new Set(result.map(s => Specializations.indexOf(s)));
+            for (let i = result.length; i < count; i++) {
+                for (let j = 0; j < Specializations.length; j++) {
+                    if (!usedIdx.has(j) && weights[j] > 0) {
+                        result.push(Specializations[j]);
+                        usedIdx.add(j);
+                        break;
+                    }
                 }
             }
         }
@@ -4287,6 +6818,7 @@ class GameScene extends Phaser.Scene {
 
     showBossReward() {
         this.paused = true;
+        this._enterPause();
         this.bossManager.onBossDefeated((this.time.now - this.startTime) / 1000);
         this.bossManager.boss = null;
         this.bossDamageBuff = false;
@@ -4340,17 +6872,39 @@ class GameScene extends Phaser.Scene {
             ? { id: 'unlock_weapon', name: '解锁新武器', icon: '🔑', desc: `解锁${WeaponFactory.info(lockedWeapons[0]).name}`, cost: 0, color: 0x44ff88, enabled: true }
             : { id: 'free', name: '免费奖励', icon: '🎁', desc: '武器经验+5/生命恢复/新随从', cost: 0, color: 0x44ff88, enabled: true };
 
+        // 武器合成选项
+        const canFuse = this.runtime.secondaryWeapon &&
+            (this.weaponLevels[this.runtime.weaponType] >= 10) &&
+            (this.weaponLevels[this.runtime.secondaryWeapon] >= 10) &&
+            (this.runtime.weaponPromotions[this.runtime.weaponType] >= 2) &&
+            (this.runtime.weaponPromotions[this.runtime.secondaryWeapon] >= 2) &&
+            !this.runtime.fusedWeapon;
+        const fusionKey = canFuse ? getFusionKey(this.runtime.weaponType, this.runtime.secondaryWeapon) : null;
+        const fusionConfig = fusionKey ? WEAPON_FUSIONS[fusionKey] : null;
+        const fusionItem = fusionConfig ? {
+            id: 'fuse', name: '武器合成', icon: fusionConfig.icon,
+            desc: `合成${fusionConfig.name}！${fusionConfig.comboSkill}`,
+            cost: 0, color: fusionConfig.color, enabled: true
+        } : null;
+
+        // 随从强化选项（随从系统独立化）
+        const hasMinion = this.minions && this.minions.length > 0;
+        const minionItem = hasMinion ? {
+            id: 'minion_up', name: '随从强化', icon: '🐺', desc: '随机强化一个随从', cost: 200, color: 0x88ff44,
+            enabled: this.runtime.gold >= 200
+        } : null;
+
+        // 精简 BOSS 商店：5 个核心选项，避免选择过载
         const items = [
             { id: 'promote', name: '武器晋升', icon: '⚔', desc: promoDesc, cost: 0, color: 0xff4466, enabled: canPromote },
-            { id: 'crystal', name: '元素结晶', icon: '🔶', desc: '购买1个元素结晶', cost: 300, color: 0xff8866, enabled: this.runtime.gold >= 300 },
-            { id: 'shard3', name: '碎片×3', icon: '💠', desc: '购买3个元素碎片', cost: 120, color: 0x00ffaa, enabled: this.runtime.gold >= 120 },
             { id: 'heal', name: '血瓶', icon: '❤️', desc: '恢复60%最大生命', cost: 80, color: 0xff4488, enabled: this.runtime.gold >= 80 },
             { id: 'shield', name: '护盾', icon: '🛡', desc: '获得80护盾', cost: 100, color: 0x4488ff, enabled: this.runtime.gold >= 100 },
-            { id: 'rage', name: '狂暴药剂', icon: '🔥', desc: '6秒狂暴模式', cost: 150, color: 0xff4400, enabled: this.runtime.gold >= 150 },
             { id: 'atk_gem', name: '攻击宝石', icon: '💎', desc: '永久攻击+5%', cost: 400, color: 0xaa88ff, enabled: this.runtime.gold >= 400 },
             { id: 'spec', name: '随机专精', icon: '📜', desc: '随机获得2项专精', cost: 500, color: 0xcc44ff, enabled: this.runtime.gold >= 500 },
-            freeItem
         ];
+        if (fusionItem) items.push(fusionItem);
+        if (minionItem) items.push(minionItem);
+        items.push(freeItem);
 
         const cardW = 150, cardH = 110;
         const startX = GW / 2 - cardW - 5;
@@ -4395,6 +6949,8 @@ class GameScene extends Phaser.Scene {
                     uiElements.forEach(e => e.destroy());
                     if (isFree) {
                         this.paused = false;
+                        this._exitPause();
+                        if (this.enemyManager) this.enemyManager.lastSpawn = 0;
                     } else {
                         this.showBossReward();
                     }
@@ -4412,6 +6968,14 @@ class GameScene extends Phaser.Scene {
         cont.on('pointerdown', () => {
             uiElements.forEach(e => e.destroy());
             this.paused = false;
+            this._exitPause();
+            // 恢复小怪生成，避免打完BOSS后长时间无怪
+            if (this.enemyManager) this.enemyManager.lastSpawn = 0;
+            // BOSS击败后，生成传送门到下一区域
+            if (this.runtime.currentRegion < REGIONS.length - 1) {
+                this.runtime.regionCleared[this.runtime.currentRegion] = true;
+                this.spawnPortal();
+            }
         });
     }
 
@@ -4500,15 +7064,43 @@ class GameScene extends Phaser.Scene {
                 break;
             }
             case 'unlock_weapon': {
-                const allW = ['sword', 'axe', 'staff', 'bow', 'wand'];
-                const locked = allW.filter(w => !this.saveData.unlockedWeapons.includes(w));
-                if (locked.length > 0) {
-                    const newW = locked[0];
-                    this.saveData.unlockedWeapons.push(newW);
-                    this.switchWeapon(newW);
-                    this.showCenterText(`解锁 ${WeaponFactory.info(newW).name}!`, '#44ff88', 2000);
-                    this.particles.explosion(GW / 2, GH / 2, 50, WeaponFactory.info(newW).color);
+                // 武器改为通关解锁，商人处改为赠送魂石（局外养成资源）
+                this.saveData.soulStones = (this.saveData.soulStones || 0) + 5;
+                this.showCenterText('获得 5 魂石！(死后用于局外加点)', '#aa88ff');
+                this.particles.explosion(GW / 2, GH / 2, 40, 0xaa88ff);
+                this.audio.play('levelup');
+                break;
+            }
+            case 'fuse': {
+                const w1 = this.runtime.weaponType;
+                const w2 = this.runtime.secondaryWeapon;
+                const key = getFusionKey(w1, w2);
+                const config = WEAPON_FUSIONS[key];
+                if (config) {
+                    // 消耗材料
+                    this.runtime.elements.shard -= 10;
+                    this.runtime.elements.dust -= 5;
+                    this.runtime.elements.crystal -= 3;
+                    // 设置合成武器
+                    this.runtime.fusedWeapon = { name: config.name, color: config.color, comboSkill: config.comboSkill, components: [w1, w2] };
+                    this.runtime.weaponType = 'fused';
+                    this.runtime.weapon = WeaponFactory.create(w1, this.runtime); // 基础属性用主武器
+                    this.runtime.weapon.baseDmg *= 1.5; // 合成武器+50%基础伤害
+                    this.runtime.weapon.isFused = true;
+                    this.showCenterText(`合成成功：${config.name}!`, '#ffdd44');
+                    this.particles.explosion(GW / 2, GH / 2, 80, config.color);
                     this.audio.play('levelup');
+                }
+                break;
+            }
+            case 'minion_up': {
+                if (this.minions && this.minions.length > 0) {
+                    const m = this.minions[Math.floor(Math.random() * this.minions.length)];
+                    const upgrades = ['dmg', 'spd', 'ele'];
+                    const up = upgrades[Math.floor(Math.random() * upgrades.length)];
+                    if (up === 'dmg') { m.dmgMul = (m.dmgMul || 1) + 0.3; this.showCenterText('随从攻击力+30%!', '#88ff44'); }
+                    if (up === 'spd') { m.spdMul = (m.spdMul || 1) + 0.2; this.showCenterText('随从攻速+20%!', '#88ff44'); }
+                    if (up === 'ele') { m.elementBonus = (m.elementBonus || 0) + 5; this.showCenterText('随从元素伤害+5!', '#88ff44'); }
                 }
                 break;
             }
@@ -4524,6 +7116,7 @@ class GameScene extends Phaser.Scene {
             this.merchantDialog = null;
         }
         this.paused = true;
+        this._enterPause();
 
         const bg = this.add.rectangle(0, 0, GW, GH, 0x000000, 0.7).setOrigin(0).setDepth(400);
         const uiElements = [bg];
@@ -4542,14 +7135,19 @@ class GameScene extends Phaser.Scene {
             uiElements.forEach(e => e.destroy());
             localElements.forEach(e => e.destroy());
             this.paused = false;
+            this._exitPause();
             this.merchantDialog = null;
         };
 
         const localElements = [];
+        // v5 智者加点：每级 8% 商店折扣
+        const sageLv = this.runtime._wisdomLv || 0;
+        const discount = sageLv > 0 ? (1 - 0.08 * sageLv) : 1;
         items.forEach((item, i) => {
             const x = GW / 2 + (i - 1) * 200;
             const y = 310;
-            const canBuy = this.runtime.gold >= item.cost;
+            const actualCost = Math.max(1, Math.floor(item.cost * discount));
+            const canBuy = this.runtime.gold >= actualCost;
             const cardBg = this.add.rectangle(x, y, 180, 230, 0x111122)
                 .setStrokeStyle(3, canBuy ? 0xffd700 : 0x444444).setInteractive().setDepth(401);
             const cardInner = this.add.rectangle(x, y, 172, 222, 0x1a1a2e).setDepth(401);
@@ -4561,15 +7159,15 @@ class GameScene extends Phaser.Scene {
                 fontSize: '13px', fontFamily: 'Courier New', color: '#ccc',
                 align: 'center', wordWrap: { width: 160 }
             }).setOrigin(0.5).setDepth(402);
-            const costText = this.add.text(x, y + 95, `💰 ${item.cost}`, {
-                fontSize: '18px', fontFamily: 'Courier New', color: canBuy ? '#ffd700' : '#666666',
+            const costText = this.add.text(x, y + 95, `💰 ${actualCost}${sageLv > 0 ? ` (智者-${Math.floor((1 - discount) * 100)}%)` : ''}`, {
+                fontSize: '16px', fontFamily: 'Courier New', color: canBuy ? '#ffd700' : '#666666',
                 stroke: '#000', strokeThickness: 2
             }).setOrigin(0.5).setDepth(402);
             localElements.push(cardBg, cardInner, icon, name, desc, costText);
 
             cardBg.on('pointerdown', () => {
                 if (!canBuy) return;
-                this.runtime.gold -= item.cost;
+                this.runtime.gold -= actualCost;
                 this.applyMerchantItem(item);
                 close();
             });
@@ -4623,6 +7221,16 @@ class GameScene extends Phaser.Scene {
         else if (hpRatio < 0.6) this.hpBar.fillColor = 0xff8800;
         else this.hpBar.fillColor = COLORS.hp;
 
+        // 区域名称显示
+        if (!this.regionLabel) {
+            this.regionLabel = this.add.text(GW - 150, 10, '', {
+                fontSize: '14px', fontFamily: 'Courier New', color: '#aaaaff',
+                stroke: '#000', strokeThickness: 2
+            }).setDepth(100);
+        }
+        const curRegion = REGIONS[r.currentRegion] || REGIONS[0];
+        this.regionLabel.setText(curRegion.name);
+
         if (r.shield > 0) {
             this.shieldBar.setVisible(true);
             this.shieldBar.scaleX = Math.min(1, r.shield / 60);
@@ -4670,6 +7278,25 @@ class GameScene extends Phaser.Scene {
                 this.dashCdText.setColor('#ffdd44');
             }
         }
+
+        // 元素面板（右下角）
+        if (!this.elementPanel) {
+            this.elementPanel = this.add.text(GW - 10, GH - 10, '', {
+                fontSize: '12px', fontFamily: 'Courier New', fill: '#aaffaa', align: 'right',
+                backgroundColor: '#00000088', padding: { x: 8, y: 4 }
+            }).setOrigin(1, 1).setDepth(100);
+        }
+        // 显示当前武器元素效果
+        const wlvl = this.weaponLevels[this.runtime.weaponType] || 1;
+        const wtype = this.runtime.weaponType;
+        const effects = [];
+        if (wtype === 'sword') effects.push(`流血${wlvl >= 4 ? '(3层)' : '(1层)'}`);
+        if (wtype === 'axe') effects.push(`燃烧${wlvl >= 4 ? '(5层)' : '(3层)'}`);
+        if (wtype === 'staff') effects.push(`冰冻${wlvl >= 7 ? '(秒杀)' : '(减速)'}`);
+        if (wtype === 'bow') effects.push(`穿透${wlvl >= 7 ? '(全穿透)' : '(50%)'}`);
+        if (wtype === 'wand') effects.push(`奥术${wlvl >= 7 ? '(风暴)' : '(印记)'}`);
+        if (this.runtime.fusedWeapon) effects.push('合体技');
+        this.elementPanel.setText('元素: ' + effects.join(' | '));
     }
 
     formatTime(seconds) {
@@ -4744,11 +7371,29 @@ class GameScene extends Phaser.Scene {
         SaveData.save(this.saveData);
     }
 
+    // 统一暂停/恢复：记录暂停起点，恢复时把暂停时长补回 startTime，避免 gT 跳越导致跳章
+    _enterPause() {
+        if (this._pauseActive) return;
+        this._pauseActive = true;
+        this._pauseStartTime = this.time.now;
+        if (this.physics) this.physics.pause();
+    }
+    _exitPause() {
+        if (!this._pauseActive) return;
+        this._pauseActive = false;
+        if (this._pauseStartTime != null) {
+            this.startTime += (this.time.now - this._pauseStartTime);
+            this._pauseStartTime = null;
+        }
+        if (this.physics) this.physics.resume();
+    }
+
     togglePause() {
         if (this.gameState !== 'playing' || this.merchantDialog) return;
         this.paused = !this.paused;
 
         if (this.paused) {
+            this._enterPause();
             this.pauseElements = [];
             const bg = this.add.rectangle(0, 0, GW, GH, 0x000000, 0.78).setOrigin(0).setDepth(450);
             const title = this.add.text(GW / 2, GH / 2 - 80, '⏸ 暂停', {
@@ -4783,6 +7428,7 @@ class GameScene extends Phaser.Scene {
                 this.pauseElements.forEach(e => e.destroy());
                 this.pauseElements = [];
                 this.paused = false;
+                this._exitPause();
             });
 
             menu.on('pointerover', () => menu.setColor('#fff'));
@@ -4791,6 +7437,7 @@ class GameScene extends Phaser.Scene {
                 this.pauseElements.forEach(e => e.destroy());
                 this.pauseElements = [];
                 this.paused = false;
+                this._exitPause();
                 this.showMainMenu();
             });
 
@@ -4798,6 +7445,7 @@ class GameScene extends Phaser.Scene {
         } else if (this.pauseElements && this.pauseElements.length > 0) {
             this.pauseElements.forEach(e => e.destroy());
             this.pauseElements = [];
+            this._exitPause();
         }
     }
 
@@ -4805,7 +7453,6 @@ class GameScene extends Phaser.Scene {
         if (this.gameState === 'gameover') return;
         this.gameState = 'gameover';
         this.audio.play('die');
-        this.cameras.main.shake(500, 0.02);
 
         if (this.bossManager) this.bossManager.clear();
         if (this.enemyManager) this.enemyManager.clear();
@@ -4816,6 +7463,66 @@ class GameScene extends Phaser.Scene {
         sd.totalGold += r.gold;
         if (r.surviveTime > sd.bestTime) sd.bestTime = r.surviveTime;
         if (r.level > sd.bestLevel) sd.bestLevel = r.level;
+
+        // ===== v5 局外养成结算：三资源（大幅降低魂石，新增玄铁/BOSS之血）=====
+        // 魂石：存活/30 + 击杀/15 + BOSS×2（原 /30 +/10 +×5，砍半多）
+        const earnedStones = Math.floor(r.surviveTime / 60 + r.killCount / 15 + r.bossKills * 2);
+        sd.soulStones = (sd.soulStones || 0) + earnedStones;
+        this._earnedStones = earnedStones;
+        // 玄铁：精英击杀为主（需在 runtime 统计精英击杀，这里用 bossKills 近似）
+        const earnedIron = Math.floor(r.bossKills * 1 + r.killCount / 50);
+        sd.darkIron = (sd.darkIron || 0) + earnedIron;
+        this._earnedIron = earnedIron;
+        // BOSS之血：每个BOSS 1 个
+        const earnedBlood = r.bossKills;
+        sd.bossBlood = (sd.bossBlood || 0) + earnedBlood;
+        this._earnedBlood = earnedBlood;
+        // 击败的BOSS类型记录（用于解锁元素分支）
+        if (r.lastBossType && !(sd.bossesDefeated || []).includes(r.lastBossType)) {
+            sd.bossesDefeated = sd.bossesDefeated || [];
+            sd.bossesDefeated.push(r.lastBossType);
+        }
+
+        // ===== v5 难度锁系统：通关当前难度→解锁下一难度 =====
+        const diffName = r.difficultyName || '普通';
+        const diffMap = { '简单': 'easy', '普通': 'normal', '困难': 'hard', '地狱': 'hell' };
+        const diffKey = diffMap[diffName] || 'normal';
+        sd.unlockedDifficulties = sd.unlockedDifficulties || ['easy'];
+        const unlockedNew = [];
+        const unlockedDiff = [];
+        // 通关判定：击败足够多BOSS视为通关该难度
+        if (r.bossKills >= 3 && !sd.difficultyCleared[diffKey]) {
+            sd.difficultyCleared[diffKey] = true;
+            // v5：解锁下一难度
+            const order = ['easy', 'normal', 'hard', 'hell'];
+            const idx = order.indexOf(diffKey);
+            if (idx >= 0 && idx + 1 < order.length) {
+                const nextDiff = order[idx + 1];
+                if (!sd.unlockedDifficulties.includes(nextDiff)) {
+                    sd.unlockedDifficulties.push(nextDiff);
+                    unlockedDiff.push(nextDiff);
+                }
+            }
+            // 武器解锁路径（保持）
+            if (diffKey === 'normal' && !sd.unlockedWeapons.includes('axe')) {
+                sd.unlockedWeapons.push('axe'); unlockedNew.push('axe');
+            }
+            if (diffKey === 'hard' && !sd.unlockedWeapons.includes('bow')) {
+                sd.unlockedWeapons.push('bow'); unlockedNew.push('bow');
+            }
+            if (diffKey === 'hell' && !sd.unlockedWeapons.includes('staff')) {
+                sd.unlockedWeapons.push('staff'); unlockedNew.push('staff');
+            }
+        }
+        // 击败暗影神→解锁法杖
+        if (r.bossKills >= 8 && !sd.shadowGodDefeated) {
+            sd.shadowGodDefeated = true;
+            if (!sd.unlockedWeapons.includes('wand')) {
+                sd.unlockedWeapons.push('wand'); unlockedNew.push('wand');
+            }
+        }
+        this._unlockedNewWeapons = unlockedNew;
+        this._unlockedNewDiff = unlockedDiff;
         SaveData.save(sd);
 
         this.gameOverElements = [];
@@ -4840,7 +7547,10 @@ class GameScene extends Phaser.Scene {
             { label: '击败Boss', value: `${r.bossKills}`, color: '#ff4488' },
             { label: '获得金币', value: `${r.gold}`, color: '#ffd700' },
             { label: '最高连击', value: `${r.maxCombo}`, color: '#ff8800' },
-            { label: '武器等级', value: `Lv.${this.weaponLevels ? (this.weaponLevels[r.weaponType] || 1) : 1}`, color: '#44ff88' }
+            { label: '武器等级', value: `Lv.${this.weaponLevels ? (this.weaponLevels[r.weaponType] || 1) : 1}`, color: '#44ff88' },
+            { label: '获得魂石', value: `+${this._earnedStones || 0} (共${sd.soulStones})`, color: '#aa88ff' },
+            { label: '获得玄铁', value: `+${this._earnedIron || 0} (共${sd.darkIron})`, color: '#ffaa55' },
+            { label: 'BOSS之血', value: `+${this._earnedBlood || 0} (共${sd.bossBlood})`, color: '#ffdd44' }
         ];
 
         stats.forEach((s, i) => {
