@@ -490,6 +490,7 @@ const SaveData = {
         catch (e) { return this.default(); }
     },
     save(d) { try { localStorage.setItem('shadowHunter_v5', JSON.stringify(d)); } catch (e) {} },
+    clear() { try { localStorage.removeItem('shadowHunter_v5'); } catch (e) {} },
     default() {
         return {
             bestTime: 0, bestLevel: 0, totalKills: 0, totalGold: 0, totalRuns: 0,
@@ -4666,7 +4667,7 @@ class GameScene extends Phaser.Scene {
             this.menuElements.push(cardBg, cardInner, icon, name, desc);
         });
 
-        const tips = this.add.text(GW / 2, GH - 90,
+        const tips = this.add.text(GW / 2, GH - 115,
             'WASD 移动 | 鼠标瞄准自动攻击 | 空格 技能 | Q 切武器 | 1/2 快速切换 | Shift 冲刺 | E 闪现 | ESC 暂停', {
             fontSize: '12px', fontFamily: 'Courier New', color: '#888'
         }).setOrigin(0.5).setDepth(401);
@@ -4698,6 +4699,17 @@ class GameScene extends Phaser.Scene {
 
         this.menuElements.push(resDisplay, smithyBtn, smithyTxt, upgradeBtn, upgradeTxt);
 
+        // 存档管理按钮（左下角）
+        const saveBtn = this.add.rectangle(90, GH - 38, 150, 32, 0x331122, 0.95)
+            .setStrokeStyle(2, 0xff6688).setInteractive().setDepth(401);
+        const saveTxt = this.add.text(90, GH - 38, '🗂 存档管理', {
+            fontSize: '13px', fontFamily: 'Courier New', color: '#ff99bb', fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        saveBtn.on('pointerover', () => saveBtn.setStrokeStyle(3, 0xffffff));
+        saveBtn.on('pointerout', () => saveBtn.setStrokeStyle(2, 0xff6688));
+        saveBtn.on('pointerdown', () => this.showSaveManager());
+        this.menuElements.push(saveBtn, saveTxt);
+
         // 新武器解锁提示
         if (this._unlockedNewWeapons && this._unlockedNewWeapons.length > 0) {
             const unlockMsg = this._unlockedNewWeapons.map(w => WeaponFactory.info(w).name).join('、');
@@ -4712,9 +4724,9 @@ class GameScene extends Phaser.Scene {
 
         const today = new Date();
         const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-        const dailyBtn = this.add.rectangle(GW / 2, GH - 115, 220, 38, 0x442266, 0.95)
+        const dailyBtn = this.add.rectangle(GW / 2, GH - 75, 220, 38, 0x442266, 0.95)
             .setStrokeStyle(2, 0xff00ff).setInteractive().setDepth(401);
-        const dailyText = this.add.text(GW / 2, GH - 115,
+        const dailyText = this.add.text(GW / 2, GH - 75,
             `🌟 每日挑战 (${today.getMonth() + 1}/${today.getDate()})`, {
             fontSize: '14px', fontFamily: 'Courier New', color: '#ff88ff', fontWeight: 'bold',
             stroke: '#000', strokeThickness: 2
@@ -4731,8 +4743,8 @@ class GameScene extends Phaser.Scene {
             stroke: '#000', strokeThickness: 1
         }).setOrigin(1, 0).setDepth(401);
 
-        const stats = this.add.text(GW / 2, GH - 38,
-            `💰 总金币: ${this.saveData.totalGold} | 🏃 总场次: ${this.saveData.totalRuns} | 👑 最高Boss: ${this.saveData.highestBoss}`, {
+        const stats = this.add.text(GW - 90, GH - 38,
+            `💰 ${this.saveData.totalGold} | 🏃 ${this.saveData.totalRuns} | 👑 ${this.saveData.highestBoss}`, {
             fontSize: '11px', fontFamily: 'Courier New', color: '#aaa'
         }).setOrigin(0.5).setDepth(401);
 
@@ -4856,6 +4868,230 @@ class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setInteractive().setDepth(401);
         back.on('pointerdown', () => this.showMainMenu());
         this.menuElements.push(back);
+    }
+
+    // ===== v5 存档管理面板 =====
+    showSaveManager() {
+        this.menuElements.forEach(e => e.destroy());
+        this.menuElements = [];
+        const sd = this.saveData;
+        const bg = this.add.rectangle(0, 0, GW, GH, 0x000000, 0.95).setOrigin(0).setDepth(400);
+        const title = this.add.text(GW / 2, 60, '🗂 存档管理', {
+            fontSize: '36px', fontFamily: 'Courier New', color: '#ff99bb',
+            stroke: '#000', strokeThickness: 4, fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(401);
+        const subtitle = this.add.text(GW / 2, 105, '查看存档详情 · 重置进度 · 导出/导入存档', {
+            fontSize: '14px', fontFamily: 'Courier New', color: '#aaa'
+        }).setOrigin(0.5).setDepth(401);
+        this.menuElements.push(bg, title, subtitle);
+
+        // 存档信息面板
+        const panelX = GW / 2 - 280, panelY = 145, panelW = 560, panelH = 380;
+        const panel = this.add.rectangle(panelX, panelY, panelW, panelH, 0x111122, 0.95)
+            .setStrokeStyle(2, 0x444466).setOrigin(0).setDepth(401);
+        this.menuElements.push(panel);
+
+        // 存档存在判断
+        const hasSave = localStorage.getItem('shadowHunter_v5') !== null;
+        if (!hasSave) {
+            const empty = this.add.text(GW / 2, panelY + panelH / 2, '📭 暂无存档数据', {
+                fontSize: '24px', fontFamily: 'Courier New', color: '#666'
+            }).setOrigin(0.5).setDepth(402);
+            this.menuElements.push(empty);
+        } else {
+            // 显示存档详情
+            const infos = [
+                { label: '游戏版本', value: 'Shadow Hunter v5', color: '#ffffff' },
+                { label: '总场次', value: `${sd.totalRuns || 0} 局`, color: '#88ff88' },
+                { label: '最佳时间', value: this.formatTime(sd.bestTime || 0), color: '#ffd700' },
+                { label: '总击杀', value: `${sd.totalKills || 0}`, color: '#ff8888' },
+                { label: '总金币', value: `${sd.totalGold || 0}`, color: '#ffd700' },
+                { label: '最高BOSS', value: `第 ${sd.highestBoss || 0} 章`, color: '#ff66ff' },
+                { label: '成就', value: `${(sd.achievements || []).length}/30`, color: '#ffaa44' },
+                { label: '解锁武器', value: `${(sd.unlockedWeapons || ['sword']).length}/5`, color: '#88ddff' },
+                { label: '解锁难度', value: `${(sd.unlockedDifficulties || ['easy']).length}/4`, color: '#ff99bb' },
+                { label: '魂石', value: `${sd.soulStones || 0}`, color: '#aa88ff' },
+                { label: '玄铁', value: `${sd.darkIron || 0}`, color: '#ffaa55' },
+                { label: 'BOSS之血', value: `${sd.bossBlood || 0}`, color: '#ff4466' },
+            ];
+            infos.forEach((info, i) => {
+                const col = i % 2;
+                const row = Math.floor(i / 2);
+                const x = panelX + 20 + col * 270;
+                const y = panelY + 25 + row * 28;
+                const lblTxt = this.add.text(x, y, info.label + ':', {
+                    fontSize: '13px', fontFamily: 'Courier New', color: '#888'
+                }).setOrigin(0, 0.5).setDepth(402);
+                const valTxt = this.add.text(x + 110, y, info.value, {
+                    fontSize: '14px', fontFamily: 'Courier New', color: info.color, fontWeight: 'bold'
+                }).setOrigin(0, 0.5).setDepth(402);
+                this.menuElements.push(lblTxt, valTxt);
+            });
+
+            // 存档大小
+            const saveSize = new Blob([localStorage.getItem('shadowHunter_v5') || '']).size;
+            const sizeTxt = this.add.text(panelX + panelW - 20, panelY + panelH - 15,
+                `存档大小: ${(saveSize / 1024).toFixed(2)} KB`, {
+                fontSize: '11px', fontFamily: 'Courier New', color: '#666'
+            }).setOrigin(1, 0.5).setDepth(402);
+            this.menuElements.push(sizeTxt);
+        }
+
+        // 操作按钮
+        const btnY = 555;
+        // 返回按钮
+        const backBtn = this.add.rectangle(GW / 2 - 225, btnY, 130, 40, 0x223322, 0.95)
+            .setStrokeStyle(2, 0x66ff66).setInteractive().setDepth(401);
+        const backTxt = this.add.text(GW / 2 - 225, btnY, '◀ 返回', {
+            fontSize: '15px', fontFamily: 'Courier New', color: '#88ff88', fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        backBtn.on('pointerover', () => backBtn.setStrokeStyle(3, 0xffffff));
+        backBtn.on('pointerout', () => backBtn.setStrokeStyle(2, 0x66ff66));
+        backBtn.on('pointerdown', () => this.showMainMenu());
+
+        // 导出按钮
+        const exportBtn = this.add.rectangle(GW / 2 - 75, btnY, 130, 40, 0x222244, 0.95)
+            .setStrokeStyle(2, 0x6688ff).setInteractive().setDepth(401);
+        const exportTxt = this.add.text(GW / 2 - 75, btnY, '📤 导出存档', {
+            fontSize: '14px', fontFamily: 'Courier New', color: '#88aaff', fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        exportBtn.on('pointerover', () => exportBtn.setStrokeStyle(3, 0xffffff));
+        exportBtn.on('pointerout', () => exportBtn.setStrokeStyle(2, 0x6688ff));
+        exportBtn.on('pointerdown', () => this.exportSave());
+
+        // 导入按钮
+        const importBtn = this.add.rectangle(GW / 2 + 75, btnY, 130, 40, 0x222244, 0.95)
+            .setStrokeStyle(2, 0x6688ff).setInteractive().setDepth(401);
+        const importTxt = this.add.text(GW / 2 + 75, btnY, '📥 导入存档', {
+            fontSize: '14px', fontFamily: 'Courier New', color: '#88aaff', fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        importBtn.on('pointerover', () => importBtn.setStrokeStyle(3, 0xffffff));
+        importBtn.on('pointerout', () => importBtn.setStrokeStyle(2, 0x6688ff));
+        importBtn.on('pointerdown', () => this.importSave());
+
+        // 删除按钮（危险操作）
+        const delBtn = this.add.rectangle(GW / 2 + 225, btnY, 130, 40, 0x441111, 0.95)
+            .setStrokeStyle(2, 0xff4444).setInteractive().setDepth(401);
+        const delTxt = this.add.text(GW / 2 + 225, btnY, '🗑 删除存档', {
+            fontSize: '14px', fontFamily: 'Courier New', color: '#ff6666', fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        delBtn.on('pointerover', () => delBtn.setStrokeStyle(3, 0xffffff));
+        delBtn.on('pointerout', () => delBtn.setStrokeStyle(2, 0xff4444));
+        delBtn.on('pointerdown', () => this.confirmDeleteSave());
+
+        this.menuElements.push(backBtn, backTxt, exportBtn, exportTxt, importBtn, importTxt, delBtn, delTxt);
+    }
+
+    // 导出存档（复制到剪贴板）
+    exportSave() {
+        const data = localStorage.getItem('shadowHunter_v5') || '';
+        if (!data) {
+            this.showCenterText('无存档可导出', '#ff6666', 1500);
+            return;
+        }
+        try {
+            // 创建一个输入框让用户复制
+            const ta = document.createElement('textarea');
+            ta.value = data;
+            ta.style.position = 'fixed';
+            ta.style.top = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.showCenterText('✅ 存档已复制到剪贴板', '#88ff88', 2000);
+        } catch (e) {
+            this.showCenterText('导出失败', '#ff6666', 1500);
+        }
+    }
+
+    // 导入存档
+    importSave() {
+        const ta = document.createElement('textarea');
+        ta.value = '';
+        ta.placeholder = '粘贴存档数据...';
+        ta.style.position = 'fixed';
+        ta.style.top = '50%';
+        ta.style.left = '50%';
+        ta.style.transform = 'translate(-50%, -50%)';
+        ta.style.width = '500px';
+        ta.style.height = '200px';
+        ta.style.zIndex = '9999';
+        ta.style.fontSize = '12px';
+        const tip = document.createElement('div');
+        tip.textContent = '粘贴存档数据并按回车，取消请点击外部';
+        tip.style.cssText = 'position:fixed;top:calc(50% - 140px);left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 20px;border-radius:8px;z-index:9999;font-family:monospace;';
+        document.body.appendChild(tip);
+        document.body.appendChild(ta);
+        ta.focus();
+        const cancel = document.createElement('button');
+        cancel.textContent = '取消';
+        cancel.style.cssText = 'position:fixed;top:calc(50% + 120px);left:50%;transform:translateX(-50%);background:#444;color:#fff;padding:8px 20px;border-radius:4px;z-index:9999;cursor:pointer;font-family:monospace;';
+        document.body.appendChild(cancel);
+        const cleanup = () => {
+            document.body.removeChild(ta);
+            document.body.removeChild(tip);
+            document.body.removeChild(cancel);
+        };
+        cancel.onclick = cleanup;
+        ta.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const v = ta.value.trim();
+                if (!v) { cleanup(); return; }
+                try {
+                    JSON.parse(v); // 验证
+                    localStorage.setItem('shadowHunter_v5', v);
+                    cleanup();
+                    this.saveData = SaveData.load();
+                    this.showCenterText('✅ 存档导入成功', '#88ff88', 2000);
+                    this.time.delayedCall(1500, () => this.showSaveManager());
+                } catch (err) {
+                    alert('存档数据格式错误');
+                }
+            } else if (e.key === 'Escape') {
+                cleanup();
+            }
+        };
+    }
+
+    // 确认删除存档（二次确认）
+    confirmDeleteSave() {
+        this.menuElements.forEach(e => e.destroy());
+        this.menuElements = [];
+        const bg = this.add.rectangle(0, 0, GW, GH, 0x000000, 0.97).setOrigin(0).setDepth(400);
+        const title = this.add.text(GW / 2, GH / 2 - 80, '⚠ 警告', {
+            fontSize: '40px', fontFamily: 'Courier New', color: '#ff4444',
+            stroke: '#000', strokeThickness: 4, fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(401);
+        const msg = this.add.text(GW / 2, GH / 2 - 10,
+            '删除存档将永久丢失：\n\n· 所有武器升级和形态进化\n· 所有角色加点和资源\n· 成就、最佳记录、解锁内容\n\n此操作不可恢复！', {
+            fontSize: '16px', fontFamily: 'Courier New', color: '#ffaaaa',
+            align: 'center', stroke: '#000', strokeThickness: 2
+        }).setOrigin(0.5).setDepth(401);
+        const confirmBtn = this.add.rectangle(GW / 2 - 110, GH / 2 + 110, 180, 44, 0x441111, 0.95)
+            .setStrokeStyle(2, 0xff4444).setInteractive().setDepth(401);
+        const confirmTxt = this.add.text(GW / 2 - 110, GH / 2 + 110, '🗑 确认删除', {
+            fontSize: '16px', fontFamily: 'Courier New', color: '#ff6666', fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        const cancelBtn = this.add.rectangle(GW / 2 + 110, GH / 2 + 110, 180, 44, 0x223322, 0.95)
+            .setStrokeStyle(2, 0x66ff66).setInteractive().setDepth(401);
+        const cancelTxt = this.add.text(GW / 2 + 110, GH / 2 + 110, '✕ 取消', {
+            fontSize: '16px', fontFamily: 'Courier New', color: '#88ff88', fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        confirmBtn.on('pointerover', () => confirmBtn.setStrokeStyle(3, 0xffffff));
+        confirmBtn.on('pointerout', () => confirmBtn.setStrokeStyle(2, 0xff4444));
+        cancelBtn.on('pointerover', () => cancelBtn.setStrokeStyle(3, 0xffffff));
+        cancelBtn.on('pointerout', () => cancelBtn.setStrokeStyle(2, 0x66ff66));
+        cancelBtn.on('pointerdown', () => this.showSaveManager());
+        confirmBtn.on('pointerdown', () => {
+            SaveData.clear();
+            this.saveData = SaveData.default();
+            this.selectedDifficulty = null;
+            this.showCenterText('存档已清除', '#ff8888', 1500);
+            this.time.delayedCall(1200, () => this.showMainMenu());
+        });
+        this.menuElements.push(bg, title, msg, confirmBtn, confirmTxt, cancelBtn, cancelTxt);
     }
 
     // ===== v5 局外养成：10 分支角色加点 =====
