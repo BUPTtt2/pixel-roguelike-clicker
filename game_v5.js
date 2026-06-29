@@ -1633,7 +1633,7 @@ class EnemyManager {
         if (this.merchantActive && !this.merchantActive.alive) this.merchantActive = null;
     }
     checkWave(gameTime) {
-        const newWave = Math.floor(gameTime / 45) + 1;
+        const newWave = Math.floor(gameTime / 30) + 1;
         if (newWave > this.waveNumber) {
             this.waveNumber = newWave; this.lastWaveTime = gameTime;
             const isBossWave = newWave % 6 === 0;
@@ -1641,6 +1641,19 @@ class EnemyManager {
             this.waveKills = 0;
             this.waveKillTarget = 15 + newWave * 5;
             this.scene.particles.waveBanner(newWave, isEliteWave, isBossWave);
+            // 新波次立即刷一批怪，避免波次间隔空窗期
+            const difficulty = this.getDifficulty(gameTime);
+            const waveMultiplier = 1 + (this.waveNumber - 1) * 0.12;
+            const initialSpawn = Math.min(6, 3 + Math.floor(this.waveNumber / 3));
+            for (let i = 0; i < initialSpawn; i++) {
+                this.scene.time.delayedCall(i * 80, () => {
+                    if (this.scene.gameState === 'playing' && !this.scene.paused) {
+                        this.spawnEnemy(difficulty * waveMultiplier * 0.85, gameTime);
+                    }
+                });
+            }
+            // 重置spawn计时器，让后续刷怪立即跟进
+            this.lastSpawn = gameTime * 1000 - this.spawnInterval + 300;
         }
     }
     checkMerchant(gameTime) {
