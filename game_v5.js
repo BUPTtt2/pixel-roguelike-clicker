@@ -856,6 +856,41 @@ class AudioSystem {
     }
 }
 
+// ==================== 优雅过场特效（替代全屏闪烁）====================
+class CinematicEffect {
+    static play(scene, color = 0xffffff, intensity = 0.4, type = 'shimmer') {
+        const w = GW, h = GH;
+        // 顶部到中央渐变扫光
+        const sweep = scene.add.rectangle(0, h * 0.3, w, 40, color, intensity * 0.6).setOrigin(0).setDepth(290);
+        scene.tweens.add({
+            targets: sweep, y: h * 0.7, alpha: 0,
+            duration: 600, ease: 'Cubic.easeOut',
+            onComplete: () => sweep.destroy()
+        });
+        // 中心光环扩散
+        const ring = scene.add.circle(w / 2, h / 2, 30, color, 0).setStrokeStyle(4, color, intensity).setDepth(288);
+        scene.tweens.add({
+            targets: ring, radius: 350, alpha: 0, lineWidth: 0,
+            duration: 700, ease: 'Cubic.easeOut',
+            onComplete: () => ring.destroy()
+        });
+        // 角落星花
+        for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2;
+            const sx = w / 2 + Math.cos(a) * 200;
+            const sy = h / 2 + Math.sin(a) * 200;
+            const star = scene.add.star(sx, sy, 4, 3, 8, color, 0.7).setDepth(289);
+            scene.tweens.add({
+                targets: star, scale: { from: 0.5, to: 2 }, alpha: 0,
+                x: w / 2 + Math.cos(a) * 350,
+                y: h / 2 + Math.sin(a) * 350,
+                duration: 600, ease: 'Cubic.easeOut',
+                onComplete: () => star.destroy()
+            });
+        }
+    }
+}
+
 // ==================== 投射物系统 ====================
 class Projectile {
     constructor(scene, x, y, targetX, targetY, damage, type, options = {}) {
@@ -1137,7 +1172,7 @@ class Enemy {
             this.speed *= 1.3;
             this.damage = Math.floor(this.damage * 1.5);
             if (this.container) {
-                this.scene.cameras.main.flash(150, 255, 50, 50);
+                this.scene.particles.explosion(this.screenX(), this.screenY(), 80, 0xff3322);
                 const rageText = this.scene.add.text(this.screenX(), this.screenY() - 40, '狂暴！', {
                     fontSize: '16px', fill: '#ff3322', stroke: '#000', strokeThickness: 3, fontWeight: 'bold'
                 }).setOrigin(0.5).setDepth(200);
@@ -1876,8 +1911,7 @@ class TreasureChest {
             });
         });
 
-        this.scene.cameras.main.flash(200, 255, 220, 100);
-
+        this.scene.particles.explosion(GW / 2, GH / 2, 100, 0xffdc64);
         this.scene.time.delayedCall(600, () => {
             this.alive = false;
             if (this.container) { this.container.destroy(); this.container = null; }
@@ -1996,7 +2030,7 @@ class PickupItem {
             case 'bossBlood':
                 sd.bossBlood = (sd.bossBlood || 0) + 1;
                 this.scene.particles.hit(this.screenX(), this.screenY(), 0xffcc00, 12, 4);
-                this.scene.cameras.main.flash(200, 255, 200, 100);
+                this.scene.particles.explosion(this.screenX(), this.screenY(), 60, 0xffff80);
                 break;
             case 'shadowStone':
                 sd.weaponMats = sd.weaponMats || { shadowStone: 0, bloodCrystal: 0 };
@@ -2023,7 +2057,6 @@ class PickupItem {
                     if (bd < 150) b.takeDamage(dmg, true);
                 });
                 this.scene.particles.explosion(this.screenX(), this.screenY(), 150, 0xff4400);
-                this.scene.cameras.main.flash(150, 0xff4400, 0.5);
                 break;
         }
         SaveData.save(sd);
@@ -2151,8 +2184,7 @@ class Boss {
         this.attackCooldown = 0;
         this.createSprite();
         this.scene.audio.play('boss');
-        // 炫酷登场特效（无震动）
-        this.scene.cameras.main.flash(500, cfg.glowColor, 0.4);
+        // 炫酷登场特效（无全屏闪烁）
         const sx = this.worldX - this.scene.playerWorldX + GW / 2;
         const sy = this.worldY - this.scene.playerWorldY + GH / 2;
         this.scene.particles.explosion(sx, sy, 180, cfg.glowColor);
@@ -2464,7 +2496,6 @@ class Boss {
                 this.scene.time.delayedCall(500, () => { if (this.alive) this[second](); });
                 this.scene.time.delayedCall(1100, () => { if (this.alive) this[third](); });
                 this.scene.showCenterText('☠ 地狱三连击！', '#ff0044', 1400);
-                this.scene.cameras.main.flash(200, 0xff0044, 0.5);
             }
         }
     }
@@ -2478,24 +2509,24 @@ class Boss {
             if (d < radius) this.scene.playerTakeDamage(this.damage * 0.9);
         });
     }
-    // v5：招式预告通用方法
+    // v5：招式预告通用方法（更淡更优雅）
     showTelegraph(x, y, size, shape, delay, callback) {
         const telegraph = this.scene.add.container(x, y).setDepth(150);
         let indicator;
         if (shape === 'circle') {
-            indicator = this.scene.add.circle(0, 0, size, 0xff0000, 0.25);
-            indicator.setStrokeStyle(3, 0xff0000, 0.9);
+            indicator = this.scene.add.circle(0, 0, size, 0xff4466, 0.08);
+            indicator.setStrokeStyle(1.5, 0xff4466, 0.5);
         } else if (shape === 'line') {
-            indicator = this.scene.add.rectangle(0, 0, size, 16, 0xff0000, 0.3);
-            indicator.setStrokeStyle(2, 0xff0000, 0.9);
+            indicator = this.scene.add.rectangle(0, 0, size, 8, 0xff4466, 0.1);
+            indicator.setStrokeStyle(1, 0xff4466, 0.4);
         } else {
-            indicator = this.scene.add.circle(0, 0, size, 0xff0000, 0.25);
+            indicator = this.scene.add.circle(0, 0, size, 0xff4466, 0.08);
         }
         telegraph.add(indicator);
-        // 闪烁动画
+        // 缓慢呼吸（不再急促闪烁）
         this.scene.tweens.add({
-            targets: indicator, alpha: { from: 0.25, to: 0.55 },
-            duration: 200, yoyo: true, repeat: Math.floor(delay / 400)
+            targets: indicator, alpha: { from: 0.08, to: 0.2 },
+            duration: 600, yoyo: true, repeat: Math.floor(delay / 1200)
         });
         this.scene.time.delayedCall(delay, () => {
             telegraph.destroy();
@@ -2532,18 +2563,18 @@ class Boss {
     laserBeam() {
         const a = Math.atan2(this.scene.playerWorldY - this.worldY,
             this.scene.playerWorldX - this.worldX);
-        // v5：激光线条预告
+        // v5：激光线条预告（更淡）
         const telegraphEndX = this.screenX() + Math.cos(a) * 600;
         const telegraphEndY = this.screenY() + Math.sin(a) * 600;
         const midX = (this.screenX() + telegraphEndX) / 2;
         const midY = (this.screenY() + telegraphEndY) / 2;
         const lineLen = Phaser.Math.Distance.Between(this.screenX(), this.screenY(), telegraphEndX, telegraphEndY);
-        const lineShape = this.scene.add.rectangle(midX, midY, lineLen, 14, 0xff0000, 0.3);
+        const lineShape = this.scene.add.rectangle(midX, midY, lineLen, 8, 0xff4466, 0.12);
         lineShape.rotation = a;
-        lineShape.setStrokeStyle(2, 0xff0000, 0.9).setDepth(150);
+        lineShape.setStrokeStyle(1, 0xff4466, 0.5).setDepth(150);
         this.scene.tweens.add({
-            targets: lineShape, alpha: { from: 0.3, to: 0.6 },
-            duration: 150, yoyo: true, repeat: 5
+            targets: lineShape, alpha: { from: 0.12, to: 0.25 },
+            duration: 450, yoyo: true, repeat: 1
         });
         this.scene.time.delayedCall(900, () => {
             lineShape.destroy();
@@ -2751,7 +2782,6 @@ class Boss {
                     this.damage * 0.8, 'meteor', { speed: 700, color: 0xff00ff, size: 14 }));
             }, i * 80);
         }
-        this.scene.cameras.main.flash(500, 0xff00ff, 0.6);
         this.scene.showCenterText('湮灭！', '#ff0000');
     }
     checkPlayerCollision() {
@@ -2817,7 +2847,6 @@ class Boss {
                     this.specialCooldown = Math.max(1200, this.specialCooldown * 0.85);
                 }
                 // 破段特效
-                this.scene.cameras.main.flash(300, 255, 100, 50);
                 this.scene.particles.explosion(this.screenX(), this.screenY(), 180, this.config.glowColor);
                 this.showPhaseText(`血条 ${this.currentBar}/${this.totalBars}`, '#ffaa00');
                 // 破段时召唤小怪（阶段2+）
@@ -2921,14 +2950,10 @@ class Boss {
         this.scene.runtime.addGold(cfg.gold);
         const lv = this.scene.runtime.addExp(cfg.exp);
         this.scene.particles.bossDefeat(this.screenX(), this.screenY());
-        const lootPool = ['health', 'health', 'exp_big', 'exp_big', 'element_shard', 'element_shard', 'arcane_dust', 'element_crystal'];
-        for (let i = 0; i < 8; i++) {
-            const a = Math.random() * Math.PI * 2, d = 60 + Math.random() * 80;
-            this.scene.items.push(new PickupItem(this.scene,
-                lootPool[Math.floor(Math.random() * lootPool.length)],
-                this.worldX + Math.cos(a) * d, this.worldY + Math.sin(a) * d));
-        }
-        this.scene.items.push(new PickupItem(this.scene, 'element_crystal', this.worldX, this.worldY));
+        // BOSS 掉落极简：只掉 1-2 件稀有资源
+        const rareLoot = Math.random() < 0.5 ? 'element_crystal' : 'bloodCrystal';
+        const a = Math.random() * Math.PI * 2, d = 50 + Math.random() * 30;
+        this.scene.items.push(new PickupItem(this.scene, rareLoot, this.worldX + Math.cos(a) * d, this.worldY + Math.sin(a) * d));
         if (lv) this.scene.onLevelUp();
         if (this.bossLevel > this.scene.saveData.highestBoss)
             this.scene.saveData.highestBoss = this.bossLevel;
@@ -2974,7 +2999,7 @@ class RuntimeData {
         this.maxHp = 100;
         this.level = 1;
         this.exp = 0;
-        this.expToNext = 60;
+        this.expToNext = 120;
         this.gold = 0;
         this.surviveTime = 0;
         this.killCount = 0;
@@ -3059,7 +3084,7 @@ class RuntimeData {
         while (this.exp >= this.expToNext) {
             this.exp -= this.expToNext;
             this.level++;
-            this.expToNext = Math.floor(80 * Math.pow(1.45, this.level - 1));
+            this.expToNext = Math.floor(150 * Math.pow(1.55, this.level - 1));
             leveled = true;
         }
         return leveled;
@@ -3091,7 +3116,6 @@ class RuntimeData {
             this.shield = (this.shield || 0) + 80;
             this.invincibleTimer = Math.max(this.invincibleTimer || 0, 2000);
             if (this._scene) {
-                this._scene.cameras.main.flash(400, 255, 240, 200);
                 this._scene.particles.explosion(GW / 2, GH / 2, 50, 0xffcc66);
                 this._scene.showCenterText('✦ 不朽复活 ✦', '#ffcc66', 1500);
                 this._scene.audio && this._scene.audio.play('levelup');
@@ -3295,9 +3319,10 @@ class BossManager {
             color: '#ffaa00', stroke: '#000', strokeThickness: 4, fontWeight: 'bold'
         }).setOrigin(0.5).setDepth(300);
         let flashCount = 0;
+        // 移除红色全屏闪烁，改为背景警示
         const flashIv = setInterval(() => {
             flashCount++;
-            bg.setAlpha(flashCount % 2 === 0 ? 0.15 : 0);
+            bg.setAlpha(flashCount % 2 === 0 ? 0.1 : 0.04);
             if (flashCount > 8) clearInterval(flashIv);
         }, 300);
         this.scene.tweens.add({
@@ -3309,7 +3334,7 @@ class BossManager {
                 this.showBossIntro(cfg, () => { this.spawnBoss(); });
             }
         });
-        this.scene.cameras.main.flash(500, 0xff2244, 0.5);
+        // 不再闪屏
     }
     showBossIntro(bossConfig, callback) {
         // 屏幕渐暗
@@ -4291,8 +4316,6 @@ class GameScene extends Phaser.Scene {
         const sx = qt.worldX - this.playerWorldX + GW / 2;
         const sy = qt.worldY - this.playerWorldY + GH / 2;
         this.particles.explosion(sx, sy, 36, 0x44ff88);
-        this.cameras.main.flash(250, 100, 255, 150);
-        this.cameras.main.flash(250, 100, 255, 150);
         if (qt.obj) {
             this.tweens.add({
                 targets: qt.obj, alpha: 0, scale: 2.2, duration: 500, ease: 'Cubic.easeOut',
@@ -4898,7 +4921,7 @@ class GameScene extends Phaser.Scene {
                         sd.weaponForms[w] = form + 1;
                         SaveData.save(sd);
                         this.audio.play('levelup');
-                        this.cameras.main.flash(400, 180, 80, 255);
+                        this.particles.explosion(this.player.x, this.player.y, 60, 0xddaa55);
                         this.showSmithy();
                     });
                 }
@@ -5566,7 +5589,7 @@ class GameScene extends Phaser.Scene {
         });
 
         this.audio.play('levelup');
-        this.cameras.main.flash(500, 255, 255, 255);
+        this.particles.chapterBanner(Chapters[0]);
         this.runtime.currentChapter = 0;
         this.chapterText.setText(`第1章: ${Chapters[0].name}`);
         this.particles.chapterBanner(Chapters[0]);
@@ -5585,7 +5608,7 @@ class GameScene extends Phaser.Scene {
             this.particles.chapterBanner(Chapters[ch]);
             this.audio.play('chapter');
             this.chapterText.setText(`第${ch + 1}章: ${Chapters[ch].name}`);
-            this.cameras.main.flash(800, Chapters[ch].color || 0xffffff, 50);
+            this.particles.chapterBanner(Chapters[ch]);
             const nextCh = Chapters[ch + 1];
             if (nextCh) {
                 const remain = nextCh.timeStart - gT;
@@ -5606,7 +5629,6 @@ class GameScene extends Phaser.Scene {
         if (this.runtime.combo >= 15 && !this.rageMode) {
             this.rageMode = true;
             this.rageTimer = 8000;
-            this.cameras.main.flash(300, 255, 100, 0);
             this.showCenterText('🔥 狂暴模式！🔥', '#ff4400', 1500);
             this.particles.explosion(this.player.x, this.player.y, 60, 0xff4400);
         }
@@ -5989,7 +6011,6 @@ class GameScene extends Phaser.Scene {
         this.emergencyShieldCooldown = 90000;
         this.runtime.invincibleTimer = Math.max(this.runtime.invincibleTimer, 2500);
         this.runtime.hp = Math.max(this.runtime.hp, this.runtime.maxHp * 0.4);
-        this.cameras.main.flash(400, 0, 200, 255);
         this.showCenterText('🛡 应急护盾！🛡', '#00ddff', 1200);
         this.particles.explosion(this.player.x, this.player.y, 80, 0x00ffff);
         this.audio.play('levelup');
@@ -6698,7 +6719,7 @@ class GameScene extends Phaser.Scene {
 
         s.use(this.time.now - this.startTime);
         this.audio.play('skill');
-        this.cameras.main.flash(200, 0xffffff, 0.4);
+        this.particles.explosion(this.player.x, this.player.y, 50, 0xffffff);
 
         const w = this.runtime.weapon;
         const baseDmg = w.getSkillDamage(this.weaponLevels[this.runtime.weaponType] || 1, this.runtime.spec);
@@ -6849,7 +6870,6 @@ class GameScene extends Phaser.Scene {
             alpha: { from: 1, to: 0.3, to: 1 },
             duration: 100, repeat: 4
         });
-        this.cameras.main.flash(100, 255, 0, 0);
     }
 
     updateComboDisplay() {
@@ -7023,7 +7043,6 @@ class GameScene extends Phaser.Scene {
         this.particles.levelUp();
         this.audio.play('levelup');
         this.runtime.updateMaxHp();
-        this.cameras.main.flash(300, 0xffd700, 0.4);
         this.showLevelUpChoice();
     }
 
@@ -7169,7 +7188,7 @@ class GameScene extends Phaser.Scene {
         this.bossDamageBuff = false;
 
         // 炫酷 BOSS 死亡特效（无震动）
-        this.cameras.main.flash(800, 0xffd700, 0.6);
+        this.particles.explosion(this.screenX(), this.screenY(), 300, 0xffd700);
         const cx = GW / 2, cy = GH / 2;
         // 多层爆炸
         this.particles.explosion(cx, cy, 200, 0xffd700);
@@ -7483,7 +7502,7 @@ class GameScene extends Phaser.Scene {
             }
         }
         this.audio.play('buy');
-        this.cameras.main.flash(200, 255, 255, 100);
+        this.particles.explosion(this.player.x, this.player.y, 40, 0xffffff);
         SaveData.save(this.saveData);
     }
 
