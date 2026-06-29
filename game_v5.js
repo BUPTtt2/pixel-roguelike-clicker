@@ -5470,6 +5470,12 @@ class GameScene extends Phaser.Scene {
         this.runtime.weaponType = weaponType;
         this.runtime.weapon = WeaponFactory.create(weaponType, this.runtime);
         this.runtime.skill = SkillFactory.create(weaponType);
+        
+        // 关键修复：根据存档设置 currentBossIndex，避免重复刷已击败的 BOSS
+        if (this.bossManager) {
+            const defeatedCount = (this.saveData.bossesDefeated || []).length;
+            this.bossManager.currentBossIndex = defeatedCount;
+        }
         // 从存档加载区域进度
         if (typeof this.saveData.currentRegion === 'number') {
             this.runtime.currentRegion = this.saveData.currentRegion;
