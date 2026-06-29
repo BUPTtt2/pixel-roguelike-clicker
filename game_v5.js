@@ -1644,7 +1644,7 @@ class EnemyManager {
             // 新波次立即刷一批怪，避免波次间隔空窗期
             const difficulty = this.getDifficulty(gameTime);
             const waveMultiplier = 1 + (this.waveNumber - 1) * 0.12;
-            const initialSpawn = Math.min(6, 3 + Math.floor(this.waveNumber / 3));
+            const initialSpawn = Math.min(10, 4 + Math.floor(this.waveNumber / 2));
             for (let i = 0; i < initialSpawn; i++) {
                 this.scene.time.delayedCall(i * 80, () => {
                     if (this.scene.gameState === 'playing' && !this.scene.paused) {
@@ -2115,7 +2115,7 @@ class Boss {
         this.accelRate = 0.015; this.hitRadius = 55;
         this.container = null; this.hpBar = null; this.hpBarBg = null;
         this.nameText = null; this.lastSpecial = 0;
-        this.specialCooldown = 2200; this.attackCooldown = 0;
+        this.specialCooldown = 1600; this.attackCooldown = 0;
         this.phase = 1; this.bossLevel = 1;
         this.config = BossConfigs.find(c => c.id === type) || BossConfigs[0];
     }
@@ -3463,7 +3463,10 @@ class GameScene extends Phaser.Scene {
             sg: { body: 0x0a0a14, dark: 0x000000, light: 0x2a2a3a, accent: 0xff2200, eye: 0xff4400, glow: 0xff6600 }
         };
         const ctx = (id) => {
-            const tex = this.textures.createCanvas('boss_' + id, SIZE, SIZE);
+            const key = 'boss_' + id;
+            // 删除旧纹理（清除浏览器缓存的旧版本）
+            if (this.textures.exists(key)) this.textures.remove(key);
+            const tex = this.textures.createCanvas(key, SIZE, SIZE);
             const c = tex.getContext();
             // 透明背景：清空画布
             c.clearRect(0, 0, SIZE, SIZE);
@@ -4576,10 +4579,10 @@ class GameScene extends Phaser.Scene {
         this.menuElements = [];
 
         const difficulties = [
-            { id: 'easy', name: '简单', icon: '🌱', color: 0x44ff88, mult: 0.6, dmgMult: 0.7, rewardMult: 0.8 },
-            { id: 'normal', name: '普通', icon: '⚔', color: 0xffdd00, mult: 1.0, dmgMult: 1.0, rewardMult: 1.0 },
-            { id: 'hard', name: '困难', icon: '🔥', color: 0xff6644, mult: 1.4, dmgMult: 1.25, rewardMult: 1.5 },
-            { id: 'hell', name: '地狱', icon: '💀', color: 0xaa00ff, mult: 2.0, dmgMult: 1.6, rewardMult: 2.5 }
+            { id: 'easy', name: '简单', icon: '🌱', color: 0x44ff88, mult: 0.7, dmgMult: 0.6, rewardMult: 0.8 },
+            { id: 'normal', name: '普通', icon: '⚔', color: 0xffdd00, mult: 1.2, dmgMult: 1.0, rewardMult: 1.0 },
+            { id: 'hard', name: '困难', icon: '🔥', color: 0xff6644, mult: 1.8, dmgMult: 1.4, rewardMult: 1.6 },
+            { id: 'hell', name: '地狱', icon: '💀', color: 0xaa00ff, mult: 2.8, dmgMult: 2.0, rewardMult: 3.0 }
         ];
         this.menuDifficulties = difficulties;
         // v5：难度锁系统——默认选已解锁的最高难度
@@ -5479,9 +5482,9 @@ class GameScene extends Phaser.Scene {
         const shadowLv = u.shadowstep || 0, galeLv = u.gale || 0;
         const greedLv = u.greed || 0, sageLv = u.sage || 0;
         const elementLv = u.element || 0, summonLv = u.summon || 0;
-        // 武器永久强化：每级 +10% 基础伤害
+        // 武器永久强化：每级 +5% 基础伤害（降低确保不破坏平衡）
         if (this.runtime.weapon && this.runtime.weapon.baseDmg) {
-            this.runtime.weapon.baseDmg *= (1 + 0.10 * smithyLv);
+            this.runtime.weapon.baseDmg *= (1 + 0.05 * smithyLv);
         }
         // 存储所有分支等级供其他系统使用
         this.runtime.upgradeBonus = u;
