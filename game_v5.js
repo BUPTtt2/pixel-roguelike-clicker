@@ -2478,15 +2478,17 @@ class Boss {
         const px = this.scene.playerWorldX, py = this.scene.playerWorldY;
         const dx = px - this.worldX, dy = py - this.worldY;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        // 距离近时减速但不完全停止，避免卡住
-        if (dist < 80) { 
-            this.currentSpeed *= 0.9;
-            // 仍然轻微移动，避免完全卡住
-            if (dist > 0 && this.currentSpeed > 3) {
-                this.worldX += (dx / dist) * this.currentSpeed * dt * 0.4;
-                this.worldY += (dy / dist) * this.currentSpeed * dt * 0.4;
-            }
-            return; 
+        // 距离近时环绕玩家移动，避免 BOSS 卡在原地
+        if (dist < 80) {
+            // 计算垂直方向，让 BOSS 围绕玩家走
+            const perpX = -dy / Math.max(dist, 1);
+            const perpY = dx / Math.max(dist, 1);
+            const orbitDir = ((this.worldX + this.worldY) % 2 < 1) ? 1 : -1;
+            const orbitSpeed = this.speed * 0.6;
+            this.worldX += perpX * orbitSpeed * orbitDir * dt;
+            this.worldY += perpY * orbitSpeed * orbitDir * dt;
+            this.currentSpeed = orbitSpeed;
+            return;
         }
         let targetSpeed = this.speed * (this.phase >= 2 ? 1.2 : 1);
         if (this.slowed > 0 && this.slowAmount) targetSpeed *= (1 - this.slowAmount);
