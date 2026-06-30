@@ -2334,18 +2334,18 @@ class Boss {
         this.container.add(bossGfx);
         }
 
-        this.hpBarBg = this.scene.add.rectangle(GW / 2, 140, 550, 22, 0x1a0000).setOrigin(0.5);
+        this.hpBarBg = this.scene.add.rectangle(GW / 2, 105, 550, 22, 0x1a0000).setOrigin(0.5);
         this.hpBarBg.setDepth(200).setScrollFactor(0).setStrokeStyle(3, 0x440000);
-        this.hpBar = this.scene.add.rectangle(GW / 2 - 272, 140, 544, 16, 0xff2244).setOrigin(0, 0.5);
+        this.hpBar = this.scene.add.rectangle(GW / 2 - 272, 105, 544, 16, 0xff2244).setOrigin(0, 0.5);
         this.hpBar.setDepth(202).setScrollFactor(0);
-        this.hpBarGlow = this.scene.add.rectangle(GW / 2 - 272, 140, 544, 16, 0xffffff, 0.3).setOrigin(0, 0.5);
+        this.hpBarGlow = this.scene.add.rectangle(GW / 2 - 272, 105, 544, 16, 0xffffff, 0.3).setOrigin(0, 0.5);
         this.hpBarGlow.setDepth(203).setScrollFactor(0);
-        this.nameText = this.scene.add.text(GW / 2, 118, `${cfg.icon} ${cfg.name}  Lv.${this.bossLevel}`, {
-            fontSize: '22px', fontFamily: 'Courier New', color: '#ff4466',
+        this.nameText = this.scene.add.text(GW / 2, 80, `${cfg.icon} ${cfg.name}  Lv.${this.bossLevel}`, {
+            fontSize: '20px', fontFamily: 'Courier New', color: '#ff4466',
             stroke: '#000', strokeThickness: 4, fontWeight: 'bold'
         }).setOrigin(0.5).setDepth(204).setScrollFactor(0);
         // v5：多血条分段指示器（■■■□□□）
-        this.barSegmentsText = this.scene.add.text(GW / 2, 165, '', {
+        this.barSegmentsText = this.scene.add.text(GW / 2, 128, '', {
             fontSize: '14px', fontFamily: 'Courier New', color: '#ffaa44',
             stroke: '#000', strokeThickness: 2, fontWeight: 'bold'
         }).setOrigin(0.5).setDepth(204).setScrollFactor(0);
@@ -2487,6 +2487,8 @@ class Boss {
             const orbitSpeed = this.speed * 0.6;
             this.worldX += perpX * orbitSpeed * orbitDir * dt;
             this.worldY += perpY * orbitSpeed * orbitDir * dt;
+            // 边界限制
+            this.clampToMap();
             this.currentSpeed = orbitSpeed;
             return;
         }
@@ -2500,18 +2502,29 @@ class Boss {
             this.worldX += (dx / dist) * this.currentSpeed * dt;
             this.worldY += (dy / dist) * this.currentSpeed * dt;
         }
+        // 边界限制（防止飘出地图）
+        this.clampToMap();
+    }
+    // 限制 BOSS 在地图边界内
+    clampToMap() {
+        const margin = this.config.size * 0.5;
+        const bound = WS - margin;
+        if (this.worldX < margin) this.worldX = margin;
+        if (this.worldX > bound) this.worldX = bound;
+        if (this.worldY < margin) this.worldY = margin;
+        if (this.worldY > bound) this.worldY = bound;
     }
     specialAttack(time) {
         if (time - this.lastSpecial < this.specialCooldown) return;
         this.lastSpecial = time;
-        // v5：难度影响 BOSS 招式
+        // 难度影响 BOSS 招式
         const diffName = this.scene.runtime.difficultyName || '普通';
         const allSkills = this.config.skills.filter(s => s !== 'enrage');
-        // 简单：只用第 1 个招式
-        let skills = (diffName === '简单') ? allSkills.slice(0, 1) : allSkills;
+        // 简单：只用前 2 个招式
+        let skills = (diffName === '简单') ? allSkills.slice(0, 2) : allSkills;
         const skill = skills[Math.floor(Math.random() * skills.length)];
         this[skill]();
-        // v5：困难/地狱 组合技（连发两个不同招式）
+        // 困难：25% 概率组合技
         if (diffName === '困难' && Math.random() < 0.25) {
             const others = skills.filter(s => s !== skill);
             if (others.length > 0) {
@@ -2520,8 +2533,8 @@ class Boss {
                 this.showBossText('⚠ 组合技！', '#ff6644');
             }
         }
-        // v5：地狱 隐藏阶段4 组合技（30% 概率三连击 + 隐藏技 'hellCombo'）
-        if (diffName === '地狱' && Math.random() < 0.35) {
+        // 地狱：40% 概率三连击 + 增加攻击频率
+        if (diffName === '地狱' && Math.random() < 0.4) {
             const others = skills.filter(s => s !== skill);
             if (others.length >= 2) {
                 const second = others[Math.floor(Math.random() * others.length)];
@@ -2531,6 +2544,26 @@ class Boss {
                 this.showBossText('☠ 三连击！', '#ff0044');
             }
         }
+    }
+    // 通用：预警圆圈+屏幕震动+伤害结算
+    skillWithWarning({ warning = 800, effect = null, color = 0xff0000, radius = 150, label = '' }) {
+        const sx = this.screenX(), sy = this.screenY();
+        // 预警圆圈
+        const warn = this.scene.add.circle(sx, sy, radius, color, 0.15)
+            .setDepth(150).setStrokeStyle(4, color, 0.7);
+        // 预警期内圆圈呼吸
+        this.scene.tweens.add({
+            targets: warn, alpha: 0.4, scale: 1.1,
+            duration: warning / 2, yoyo: true, repeat: 1,
+            onComplete: () => {
+                warn.destroy();
+                // 释放效果
+                if (effect) effect();
+                // 屏幕震动
+                this.scene.screenShake = Math.max(this.scene.screenShake, 12);
+            }
+        });
+        if (label) this.showBossText(label, '#' + color.toString(16).padStart(6, '0'));
     }
     cleave() {
         const radius = this.phase === 3 ? 200 : (this.phase === 2 ? 160 : 120);
@@ -2742,7 +2775,7 @@ class Boss {
         }
     }
     flyAttack() {
-        // 飞行攻击：BOSS 跃起并俯冲玩家，留下残影
+        // 飞行攻击：BOSS 朝玩家俯冲，留下残影
         const sx = this.screenX(), sy = this.screenY();
         // 残影效果
         for (let i = 0; i < 4; i++) {
@@ -2756,7 +2789,15 @@ class Boss {
                 });
             });
         }
-        this.worldY -= 100; this.currentSpeed = this.speed * 1.8;
+        // 朝玩家方向短距冲刺（不是往上飞），不脱离玩家
+        const px = this.scene.playerWorldX, py = this.scene.playerWorldY;
+        const dx = px - this.worldX, dy = py - this.worldY;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        const dashDist = 80;
+        this.worldX += (dx / d) * dashDist;
+        this.worldY += (dy / d) * dashDist;
+        this.clampToMap();
+        this.currentSpeed = this.speed * 1.8;
         this.showBossText('俯冲！', '#88ff88');
     }
     fireBreath() {
@@ -2790,28 +2831,41 @@ class Boss {
         this.showBossText('龙息！', '#ff6600');
     }
     tornado() {
+        this.showBossText('龙卷风！', '#88ff88');
+        // 先显示 5 个预警圈，1.2秒后同时落下
+        const targets = [];
         for (let i = 0; i < 5; i++) {
-            this.scene.time.delayedCall(i * 200, () => {
-                if (!this.alive) return;
-                const a = Math.random() * Math.PI * 2, d = 100 + Math.random() * 200;
-                const tx = this.scene.playerWorldX + Math.cos(a) * d;
-                const ty = this.scene.playerWorldY + Math.sin(a) * d;
-                const tsx = tx - this.scene.playerWorldX + GW / 2;
-                const tsy = ty - this.scene.playerWorldY + GH / 2;
-                // 可见的龙卷风
-                const tornado = this.scene.add.circle(tsx, tsy, 50, 0x88ff88, 0.4)
-                    .setDepth(90).setStrokeStyle(3, 0x44aa44, 0.8);
+            const a = Math.random() * Math.PI * 2, d = 100 + Math.random() * 200;
+            const tx = this.scene.playerWorldX + Math.cos(a) * d;
+            const ty = this.scene.playerWorldY + Math.sin(a) * d;
+            const tsx = tx - this.scene.playerWorldX + GW / 2;
+            const tsy = ty - this.scene.playerWorldY + GH / 2;
+            const warn = this.scene.add.circle(tsx, tsy, 50, 0x88ff88, 0.2)
+                .setDepth(140).setStrokeStyle(3, 0x44ff44, 0.8);
+            this.scene.tweens.add({
+                targets: warn, alpha: 0.5, scale: 1.2,
+                duration: 400, yoyo: true, repeat: 2
+            });
+            targets.push({ warn, tsx, tsy, tx, ty });
+        }
+        this.scene.time.delayedCall(1200, () => {
+            if (!this.alive) return;
+            for (const t of targets) {
+                t.warn.destroy();
+                // 龙卷风释放
+                const tornado = this.scene.add.circle(t.tsx, t.tsy, 50, 0x88ff88, 0.5)
+                    .setDepth(150).setStrokeStyle(3, 0x44ff44, 1);
                 this.scene.tweens.add({
                     targets: tornado, alpha: 0, scale: 2,
                     duration: 600, onComplete: () => tornado.destroy()
                 });
-                this.scene.particles.explosion(tsx, tsy, 80, 0x88ff88);
-                const dd = Phaser.Math.Distance.Between(tx, ty,
+                this.scene.particles.explosion(t.tsx, t.tsy, 100, 0x88ff88);
+                const dd = Phaser.Math.Distance.Between(t.tx, t.ty,
                     this.scene.playerWorldX, this.scene.playerWorldY);
-                if (dd < 100) this.scene.playerTakeDamage(this.damage * 0.5);
-            });
-        }
-        this.showBossText('龙卷风！', '#88ff88');
+                if (dd < 100) this.scene.playerTakeDamage(this.damage * 0.6);
+            }
+            this.scene.screenShake = Math.max(this.scene.screenShake, 10);
+        });
     }
     meteorShower() {
         this.showBossText('陨石雨！', '#ff4400');
@@ -3739,6 +3793,10 @@ class BossManager {
         this.boss = new Boss(this.scene, cfg.id);
         this.boss.spawn(difficulty, level);
         this.currentBossIndex++;
+        // 切换背景主题
+        if (this.setBackgroundTheme) {
+            this.setBackgroundTheme(this.currentBossIndex - 1);
+        }
     }
     onBossDefeated(gameTime) {
         this.bossDefeated = true;
@@ -4147,6 +4205,7 @@ class GameScene extends Phaser.Scene {
         this.rageTimer = 0;
         this.miniMapGraphics = null;
         this.chapterCountdown = 0;
+        this.backgroundElements = [];
 
         this.playerWorldX = 0;
         this.playerWorldY = 0;
@@ -4159,6 +4218,9 @@ class GameScene extends Phaser.Scene {
         this.pauseElements = [];
         this.merchantDialog = null;
         this.gameOverElements = [];
+
+        // 初始化多主题背景
+        this.createBackground();
 
         this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,ESC,Q,SHIFT,ONE,TWO,E,R,F');
         this.mousePos = { x: GW / 2 + 100, y: GH / 2 };
@@ -4734,6 +4796,50 @@ class GameScene extends Phaser.Scene {
         }
     }
 
+    // 创建程序化背景：每章节一个主题色 + 浮动光斑
+    createBackground() {
+        const themes = [
+            { bg: 0x0a2818, accent: 0x44ff88 },  // 哥布林 - 绿
+            { bg: 0x1a1a22, accent: 0xaabbcc },  // 骷髅 - 灰
+            { bg: 0x1a0a28, accent: 0x8844ff },  // 暗影龙 - 紫
+            { bg: 0x280a0a, accent: 0xff2244 },  // 深渊 - 红
+            { bg: 0x0a1828, accent: 0x4488ff },  // 时空 - 蓝
+            { bg: 0x281a0a, accent: 0xff8800 },  // 元素 - 橙
+            { bg: 0x180a28, accent: 0xaa00ff },  // 虚空 - 深紫
+            { bg: 0x0a0a0a, accent: 0xff0044 }   // 暗影神 - 黑红
+        ];
+        this.themes = themes;
+        this.setBackgroundTheme(0);
+    }
+    // 切换主题
+    setBackgroundTheme(idx) {
+        this.backgroundElements.forEach(e => e.destroy());
+        this.backgroundElements = [];
+        const theme = this.themes[idx % this.themes.length];
+        const bg = this.add.rectangle(0, 0, GW, GH, theme.bg, 1).setOrigin(0).setDepth(-100);
+        bg.setScrollFactor(0);
+        this.backgroundElements.push(bg);
+        for (let i = 0; i < 50; i++) {
+            const px = Math.random() * GW;
+            const py = Math.random() * GH;
+            const size = 1 + Math.random() * 2;
+            const dot = this.add.circle(px, py, size, theme.accent, 0.15 + Math.random() * 0.2)
+                .setDepth(-99).setScrollFactor(0);
+            this.tweens.add({
+                targets: dot,
+                x: px + (Math.random() - 0.5) * 30,
+                y: py + (Math.random() - 0.5) * 30,
+                alpha: { from: dot.alpha, to: dot.alpha * 0.4 },
+                duration: 3000 + Math.random() * 4000,
+                yoyo: true, repeat: -1, ease: 'Sine.inOut'
+            });
+            this.backgroundElements.push(dot);
+        }
+        const overlay = this.add.rectangle(0, 0, GW, 200, 0x000000, 0.4)
+            .setOrigin(0).setDepth(50).setScrollFactor(0);
+        this.backgroundElements.push(overlay);
+    }
+
     spawnBossPortal() {
         const px = GW / 2;
         const py = GH / 2 - 100;
@@ -4811,18 +4917,19 @@ class GameScene extends Phaser.Scene {
             stroke: '#000', strokeThickness: 2
         }).setOrigin(1, 0);
 
+        // 顶部HUD布局：时间/y=15, 波次+y/击杀+y/章节+y/难度/分两行显示
         this.timeText = this.add.text(GW / 2, 15, '00:00', {
-            fontSize: '20px', fontFamily: 'Courier New', color: '#fff',
+            fontSize: '18px', fontFamily: 'Courier New', color: '#fff',
             stroke: '#000', strokeThickness: 3
         }).setOrigin(0.5);
 
         this.waveText = this.add.text(GW / 2, 35, '波次 1', {
-            fontSize: '12px', fontFamily: 'Courier New', color: '#88ddff',
+            fontSize: '11px', fontFamily: 'Courier New', color: '#88ddff',
             stroke: '#000', strokeThickness: 2
         }).setOrigin(0.5);
 
-        this.chapterText = this.add.text(GW / 2, 52, '', {
-            fontSize: '11px', fontFamily: 'Courier New', color: '#ff88aa',
+        this.chapterText = this.add.text(GW / 2, 49, '', {
+            fontSize: '10px', fontFamily: 'Courier New', color: '#ff88aa',
             stroke: '#000', strokeThickness: 2
         }).setOrigin(0.5);
 
