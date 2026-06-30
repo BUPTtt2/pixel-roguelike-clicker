@@ -286,16 +286,16 @@ const Specializations = [
     { id: 'fort_exp', path: 'fortune', name: '经验加成', icon: '⭐', desc: '经验 +8%', color: 0xffee00, stat: 'exp', value: 0.08 },
     { id: 'fort_magnet', path: 'fortune', name: '磁力', icon: '🧲', desc: '拾取范围+40%', color: 0xffcc00, stat: 'magnet', value: 40 },
     { id: 'fort_luck', path: 'fortune', name: '幸运', icon: '', desc: '稀有掉落+50%', color: 0xddaa00, stat: 'luck', value: 0.5 },
-    { id: 'sum_strong', path: 'summon', name: '强化随从', icon: '💪', desc: '随从伤害+25%', color: 0x44ff88, stat: 'minionDmg', value: 0.25, isMinion: true },
-    { id: 'sum_double', path: 'summon', name: '双随从', icon: '👥', desc: '可拥有2随从', color: 0x66ffaa, stat: 'minionCount', value: 1, isMinion: true },
-    { id: 'sum_element', path: 'summon', name: '元素随从', icon: '✨', desc: '随从附加元素', color: 0x88ffcc, stat: 'minionEle', value: 1, isMinion: true },
-    { id: 'sum_master', path: 'summon', name: '召唤大师', icon: '👑', desc: '随从攻速+15%', color: 0x44ffaa, stat: 'minionSpd', value: 0.15, isMinion: true }
+    { id: 'sum_strong', path: 'summon', name: '强化宠物', icon: '💪', desc: '宠物伤害+25%', color: 0x44ff88, stat: 'minionDmg', value: 0.25, isMinion: true },
+    { id: 'sum_double', path: 'summon', name: '双宠物', icon: '👥', desc: '可拥有2宠物', color: 0x66ffaa, stat: 'minionCount', value: 1, isMinion: true },
+    { id: 'sum_element', path: 'summon', name: '元素宠物', icon: '✨', desc: '宠物附加元素', color: 0x88ffcc, stat: 'minionEle', value: 1, isMinion: true },
+    { id: 'sum_master', path: 'summon', name: '召唤大师', icon: '👑', desc: '宠物攻速+15%', color: 0x44ffaa, stat: 'minionSpd', value: 0.15, isMinion: true }
 ];
 
 // ==================== Boss配置 (8个) ====================
 const BossConfigs = [
-    { id: 'gk', name: '哥布林王', time: 120, hp: 1000, dmg: 18, spd: 48, radius: 55, size: 100, exp: 60, gold: 72, color: COLORS.boss.gk, glowColor: COLORS.boss.gkGlow, icon: '👑', desc: '贪婪的哥布林之王', skills: ['cleave', 'summonGoblins', 'enrage'] },
-    { id: 'sl', name: '骷髅领主', time: 240, hp: 2000, dmg: 26, spd: 38, radius: 60, size: 115, exp: 120, gold: 144, color: COLORS.boss.sl, glowColor: COLORS.boss.slGlow, icon: '💀', desc: '亡灵军团指挥官', skills: ['throwBone', 'summonSkeletons', 'deathBloom', 'enrage'] },
+    { id: 'gk', name: '哥布林王', time: 120, hp: 1000, dmg: 18, spd: 48, radius: 55, size: 100, exp: 60, gold: 72, color: COLORS.boss.gk, glowColor: COLORS.boss.gkGlow, icon: '👑', desc: '贪婪的哥布林之王', skills: ['cleave', 'chargeAttack', 'throwCoin', 'summonGoblins', 'enrage'] },
+    { id: 'sl', name: '骷髅领主', time: 240, hp: 2000, dmg: 26, spd: 38, radius: 60, size: 115, exp: 120, gold: 144, color: COLORS.boss.sl, glowColor: COLORS.boss.slGlow, icon: '💀', desc: '亡灵军团指挥官', skills: ['throwBone', 'boneLaser', 'summonSkeletons', 'deathBloom', 'enrage'] },
     { id: 'sd', name: '暗影龙', time: 360, hp: 3800, dmg: 36, spd: 52, radius: 70, size: 135, exp: 220, gold: 240, color: COLORS.boss.sd, glowColor: COLORS.boss.sdGlow, icon: '🐉', desc: '翱翔于天空的远古巨龙', skills: ['flyAttack', 'fireBreath', 'tornado', 'meteorShower', 'enrage'] },
     { id: 'ab', name: '深渊魔王', time: 480, hp: 6200, dmg: 48, spd: 44, radius: 80, size: 160, exp: 380, gold: 420, color: COLORS.boss.ab, glowColor: COLORS.boss.abGlow, icon: '😈', desc: '来自深渊的恐怖存在', skills: ['cleave', 'darkSlash', 'hellfire', 'summonDemon', 'enrage'] },
     { id: 'ts', name: '时空守护者', time: 600, hp: 9500, dmg: 62, spd: 40, radius: 85, size: 170, exp: 600, gold: 660, color: COLORS.boss.ts, glowColor: COLORS.boss.tsGlow, icon: '⏳', desc: '操控时间的神秘存在', skills: ['timeSlow', 'timeStop', 'teleportStrike', 'summonShadow', 'enrage'] },
@@ -2151,7 +2151,7 @@ class Boss {
         this.accelRate = 0.12; this.hitRadius = 55;
         this.container = null; this.hpBar = null; this.hpBarBg = null;
         this.nameText = null; this.lastSpecial = 0;
-        this.specialCooldown = 1.6; this.attackCooldown = 0;
+        this.specialCooldown = 2200; this.attackCooldown = 0;
         this.phase = 1; this.bossLevel = 1;
         this.config = BossConfigs.find(c => c.id === type) || BossConfigs[0];
     }
@@ -2334,18 +2334,18 @@ class Boss {
         this.container.add(bossGfx);
         }
 
-        this.hpBarBg = this.scene.add.rectangle(GW / 2, 75, 550, 22, 0x1a0000).setOrigin(0.5);
+        this.hpBarBg = this.scene.add.rectangle(GW / 2, 140, 550, 22, 0x1a0000).setOrigin(0.5);
         this.hpBarBg.setDepth(200).setScrollFactor(0).setStrokeStyle(3, 0x440000);
-        this.hpBar = this.scene.add.rectangle(GW / 2 - 272, 75, 544, 16, 0xff2244).setOrigin(0, 0.5);
+        this.hpBar = this.scene.add.rectangle(GW / 2 - 272, 140, 544, 16, 0xff2244).setOrigin(0, 0.5);
         this.hpBar.setDepth(202).setScrollFactor(0);
-        this.hpBarGlow = this.scene.add.rectangle(GW / 2 - 272, 75, 544, 16, 0xffffff, 0.3).setOrigin(0, 0.5);
+        this.hpBarGlow = this.scene.add.rectangle(GW / 2 - 272, 140, 544, 16, 0xffffff, 0.3).setOrigin(0, 0.5);
         this.hpBarGlow.setDepth(203).setScrollFactor(0);
-        this.nameText = this.scene.add.text(GW / 2, 45, `${cfg.icon} ${cfg.name}  Lv.${this.bossLevel}`, {
+        this.nameText = this.scene.add.text(GW / 2, 118, `${cfg.icon} ${cfg.name}  Lv.${this.bossLevel}`, {
             fontSize: '22px', fontFamily: 'Courier New', color: '#ff4466',
             stroke: '#000', strokeThickness: 4, fontWeight: 'bold'
         }).setOrigin(0.5).setDepth(204).setScrollFactor(0);
         // v5：多血条分段指示器（■■■□□□）
-        this.barSegmentsText = this.scene.add.text(GW / 2, 95, '', {
+        this.barSegmentsText = this.scene.add.text(GW / 2, 165, '', {
             fontSize: '14px', fontFamily: 'Courier New', color: '#ffaa44',
             stroke: '#000', strokeThickness: 2, fontWeight: 'bold'
         }).setOrigin(0.5).setDepth(204).setScrollFactor(0);
@@ -2390,13 +2390,13 @@ class Boss {
         }
         if (this.hp < this.maxHp * 0.5 && this.phase === 1) {
             this.phase = 2;
-            this.speed *= 1.35; this.specialCooldown = Math.max(0.5, this.specialCooldown * 0.65);
+            this.speed *= 1.35; this.specialCooldown = Math.max(1200, this.specialCooldown * 0.65);
             this.scene.particles.explosion(this.screenX(), this.screenY(), 150, this.config.glowColor);
             this.showPhaseText('狂暴！', '#ff4400');
         }
         if (this.hp < this.maxHp * 0.25 && this.phase === 2) {
             this.phase = 3;
-            this.speed *= 1.2; this.specialCooldown = Math.max(0.3, this.specialCooldown * 0.7);
+            this.speed *= 1.2; this.specialCooldown = Math.max(800, this.specialCooldown * 0.7);
             this.showPhaseText('终末形态！', '#ff0000');
             this.spawnMinions();
         }
@@ -2431,10 +2431,14 @@ class Boss {
                 if (this.container) this.container.setAlpha(1);
             }
         }
-        // 深渊魔王：持续减速玩家（使用 slowTimer 持续刷新）
+        // 深渊魔王：周期性减速玩家（每3秒触发一次，持续2秒）
         if (this.config.id === 'ab' && this.alive) {
-            this.scene.runtime.slowEffect = 0.5;
-            this.scene.runtime.slowTimer = 1500;
+            this._slowCycleTimer = (this._slowCycleTimer === undefined ? 3000 : this._slowCycleTimer) - delta;
+            if (this._slowCycleTimer <= 0) {
+                this._slowCycleTimer = 3000;
+                this.scene.runtime.slowEffect = 0.5;
+                this.scene.runtime.slowTimer = 2000;
+            }
         }
     }
     showPhaseText(text, color) {
@@ -2445,6 +2449,17 @@ class Boss {
         this.scene.tweens.add({
             targets: t, alpha: 0, scale: 2, y: this.screenY() - 120,
             duration: 1000, ease: 'Cubic.easeOut', onComplete: () => t.destroy()
+        });
+    }
+    // BOSS 技能预告文字（显示在 BOSS 附近而非屏幕中央）
+    showBossText(text, color) {
+        const t = this.scene.add.text(this.screenX(), this.screenY() - 100, text, {
+            fontSize: '24px', fontFamily: 'Courier New',
+            color, stroke: '#000', strokeThickness: 3, fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(260);
+        this.scene.tweens.add({
+            targets: t, alpha: 0, scale: 1.5, y: this.screenY() - 140,
+            duration: 1200, ease: 'Cubic.easeOut', onComplete: () => t.destroy()
         });
     }
     updateAnim(time) {
@@ -2463,22 +2478,22 @@ class Boss {
         const px = this.scene.playerWorldX, py = this.scene.playerWorldY;
         const dx = px - this.worldX, dy = py - this.worldY;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        // 修复：距离近时减速但不完全停止
-        if (dist < 70) { 
-            this.currentSpeed *= 0.92;
+        // 距离近时减速但不完全停止，避免卡住
+        if (dist < 80) { 
+            this.currentSpeed *= 0.9;
             // 仍然轻微移动，避免完全卡住
-            if (dist > 0 && this.currentSpeed > 5) {
-                this.worldX += (dx / dist) * this.currentSpeed * dt * 0.3;
-                this.worldY += (dy / dist) * this.currentSpeed * dt * 0.3;
+            if (dist > 0 && this.currentSpeed > 3) {
+                this.worldX += (dx / dist) * this.currentSpeed * dt * 0.4;
+                this.worldY += (dy / dist) * this.currentSpeed * dt * 0.4;
             }
             return; 
         }
         let targetSpeed = this.speed * (this.phase >= 2 ? 1.2 : 1);
         if (this.slowed > 0 && this.slowAmount) targetSpeed *= (1 - this.slowAmount);
-        // 修复：加速更快，避免 BOSS 看起来像卡住
-        this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(0.1, this.accelRate * 5);
+        // 加速更快，避免 BOSS 看起来像卡住
+        this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(0.15, this.accelRate * 6);
         this.currentSpeed = Math.max(0, Math.min(targetSpeed, this.currentSpeed));
-        // 修复：确保 BOSS 真的在移动
+        // 确保 BOSS 真的在移动
         if (dist > 0) {
             this.worldX += (dx / dist) * this.currentSpeed * dt;
             this.worldY += (dy / dist) * this.currentSpeed * dt;
@@ -2500,7 +2515,7 @@ class Boss {
             if (others.length > 0) {
                 const second = others[Math.floor(Math.random() * others.length)];
                 this.scene.time.delayedCall(600, () => { if (this.alive) this[second](); });
-                this.scene.showCenterText('⚠ BOSS 组合技！', '#ff6644', 1000);
+                this.showBossText('⚠ 组合技！', '#ff6644');
             }
         }
         // v5：地狱 隐藏阶段4 组合技（30% 概率三连击 + 隐藏技 'hellCombo'）
@@ -2511,43 +2526,16 @@ class Boss {
                 const third = others.filter(s => s !== second)[Math.floor(Math.random() * (others.length - 1))];
                 this.scene.time.delayedCall(500, () => { if (this.alive) this[second](); });
                 this.scene.time.delayedCall(1100, () => { if (this.alive) this[third](); });
-                this.scene.showCenterText('☠ 地狱三连击！', '#ff0044', 1400);
+                this.showBossText('☠ 三连击！', '#ff0044');
             }
         }
     }
     cleave() {
         const radius = this.phase === 3 ? 200 : (this.phase === 2 ? 160 : 120);
-        // v5：招式预告（红圈 1.2 秒后引爆）
-        this.showTelegraph(this.screenX(), this.screenY(), radius, 'circle', 1200, () => {
-            this.scene.particles.explosion(this.screenX(), this.screenY(), radius, this.config.color);
-            const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
-                this.scene.playerWorldX, this.scene.playerWorldY);
-            if (d < radius) this.scene.playerTakeDamage(this.damage * 0.9);
-        });
-    }
-    // v5：招式预告通用方法（更淡更优雅）
-    showTelegraph(x, y, size, shape, delay, callback) {
-        const telegraph = this.scene.add.container(x, y).setDepth(150);
-        let indicator;
-        if (shape === 'circle') {
-            indicator = this.scene.add.circle(0, 0, size, 0xff4466, 0.08);
-            indicator.setStrokeStyle(1.5, 0xff4466, 0.5);
-        } else if (shape === 'line') {
-            indicator = this.scene.add.rectangle(0, 0, size, 8, 0xff4466, 0.1);
-            indicator.setStrokeStyle(1, 0xff4466, 0.4);
-        } else {
-            indicator = this.scene.add.circle(0, 0, size, 0xff4466, 0.08);
-        }
-        telegraph.add(indicator);
-        // 缓慢呼吸（不再急促闪烁）
-        this.scene.tweens.add({
-            targets: indicator, alpha: { from: 0.08, to: 0.2 },
-            duration: 600, yoyo: true, repeat: Math.floor(delay / 1200)
-        });
-        this.scene.time.delayedCall(delay, () => {
-            telegraph.destroy();
-            if (callback) callback();
-        });
+        this.scene.particles.explosion(this.screenX(), this.screenY(), radius, this.config.color);
+        const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
+            this.scene.playerWorldX, this.scene.playerWorldY);
+        if (d < radius) this.scene.playerTakeDamage(this.damage * 0.9);
     }
     spawnMinions() {
         const count = this.phase === 3 ? 6 : (this.phase === 2 ? 4 : 3);
@@ -2564,46 +2552,125 @@ class Boss {
         const px = this.scene.playerWorldX, py = this.scene.playerWorldY;
         const dx = px - this.worldX, dy = py - this.worldY;
         const d = Math.sqrt(dx * dx + dy * dy);
-        if (d > 0) { this.worldX += (dx / d) * 180; this.worldY += (dy / d) * 180; }
+        const angle = Math.atan2(dy, dx);
+        
+        // 冲锋预警效果（BOSS脚下出现红色箭头指向玩家）
+        const sx = this.screenX(), sy = this.screenY();
+        const warning = this.scene.add.text(sx, sy - 60, '⚡ 冲锋！', {
+            fontSize: '18px', fontFamily: 'Courier New', color: '#ff4444',
+            stroke: '#000', strokeThickness: 3, fontWeight: 'bold'
+        }).setOrigin(0.5).setDepth(160);
+        this.scene.tweens.add({
+            targets: warning, y: sy - 100, alpha: 0,
+            duration: 800, ease: 'Cubic.easeOut',
+            onComplete: () => warning.destroy()
+        });
+        
+        // 冲锋轨迹特效（残影效果）
+        const chargeDist = 180;
+        const steps = 5;
+        for (let i = 0; i < steps; i++) {
+            const t = i / steps;
+            const trailX = this.worldX + Math.cos(angle) * chargeDist * t;
+            const trailY = this.worldY + Math.sin(angle) * chargeDist * t;
+            const trailSX = trailX - this.scene.playerWorldX + GW / 2;
+            const trailSY = trailY - this.scene.playerWorldY + GH / 2;
+            
+            this.scene.time.delayedCall(i * 40, () => {
+                const trail = this.scene.add.circle(trailSX, trailSY, 30 - i * 4, this.config.glowColor, 0.6 - i * 0.1)
+                    .setDepth(140);
+                this.scene.tweens.add({
+                    targets: trail, alpha: 0, scale: 1.5,
+                    duration: 300, onComplete: () => trail.destroy()
+                });
+            });
+        }
+        
+        // 执行冲锋
+        if (d > 0) { 
+            this.worldX += (dx / d) * chargeDist; 
+            this.worldY += (dy / d) * chargeDist; 
+        }
         this.currentSpeed = this.speed * 2;
+        
+        // 冲锋终点爆炸效果
+        const endSX = this.worldX - this.scene.playerWorldX + GW / 2;
+        const endSY = this.worldY - this.scene.playerWorldY + GH / 2;
+        this.scene.time.delayedCall(200, () => {
+            this.scene.particles.explosion(endSX, endSY, 80, this.config.color);
+        });
     }
     aoeAttack() {
         const radius = this.phase === 3 ? 220 : (this.phase === 2 ? 180 : 140);
-        this.showTelegraph(this.screenX(), this.screenY(), radius, 'circle', 1000, () => {
-            this.scene.particles.explosion(this.screenX(), this.screenY(), radius, this.config.color);
-            const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
-                this.scene.playerWorldX, this.scene.playerWorldY);
-            if (d < radius) this.scene.playerTakeDamage(this.damage * 0.9);
-        });
+        this.scene.particles.explosion(this.screenX(), this.screenY(), radius, this.config.color);
+        const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
+            this.scene.playerWorldX, this.scene.playerWorldY);
+        if (d < radius) this.scene.playerTakeDamage(this.damage * 0.9);
     }
     laserBeam() {
         const a = Math.atan2(this.scene.playerWorldY - this.worldY,
             this.scene.playerWorldX - this.worldX);
-        // 激光预告：极细线警告（不再刺眼）
-        const telegraphEndX = this.screenX() + Math.cos(a) * 600;
-        const telegraphEndY = this.screenY() + Math.sin(a) * 600;
-        const midX = (this.screenX() + telegraphEndX) / 2;
-        const midY = (this.screenY() + telegraphEndY) / 2;
-        const lineLen = Phaser.Math.Distance.Between(this.screenX(), this.screenY(), telegraphEndX, telegraphEndY);
-        const lineShape = this.scene.add.rectangle(midX, midY, lineLen, 2, 0xff4466, 0.08);
-        lineShape.rotation = a;
-        lineShape.setStrokeStyle(1, 0xff4466, 0.3).setDepth(150);
+        const range = 600;
+        const endX = this.worldX + Math.cos(a) * range;
+        const endY = this.worldY + Math.sin(a) * range;
+        
+        // 激光伤害判定
+        const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
+            this.scene.playerWorldX, this.scene.playerWorldY);
+        if (d < range) this.scene.playerTakeDamage(this.damage * 0.7);
+        
+        // 可见的激光束效果
+        const sx = this.screenX(), sy = this.screenY();
+        const ex = endX - this.scene.playerWorldX + GW / 2;
+        const ey = endY - this.scene.playerWorldY + GH / 2;
+        const dist = Phaser.Math.Distance.Between(sx, sy, ex, ey);
+        const midX = (sx + ex) / 2, midY = (sy + ey) / 2;
+        
+        // 激光主体（粗光束）
+        const beam = this.scene.add.rectangle(midX, midY, dist, 12, this.config.glowColor, 0.9)
+            .setOrigin(0.5).setRotation(a).setDepth(150);
+        // 激光核心（亮白色）
+        const core = this.scene.add.rectangle(midX, midY, dist, 6, 0xffffff, 0.95)
+            .setOrigin(0.5).setRotation(a).setDepth(151);
+        // 激光端点爆炸
+        const impact = this.scene.add.circle(ex, ey, 20, this.config.glowColor, 0.8).setDepth(152);
+        
+        // 激光粒子效果
+        for (let i = 0; i < 8; i++) {
+            const t = i / 8;
+            const px = sx + (ex - sx) * t;
+            const py = sy + (ey - sy) * t;
+            const particle = this.scene.add.circle(px, py, 4 + Math.random() * 3, 0xffffff, 0.7).setDepth(149);
+            this.scene.tweens.add({
+                targets: particle, alpha: 0, scale: 2,
+                duration: 300 + Math.random() * 200,
+                onComplete: () => particle.destroy()
+            });
+        }
+        
+        // 激光消失动画
         this.scene.tweens.add({
-            targets: lineShape, alpha: { from: 0.08, to: 0.2 },
-            duration: 450, yoyo: true, repeat: 1
+            targets: [beam, core, impact], alpha: 0, scale: 0.5,
+            duration: 400, ease: 'Cubic.easeOut',
+            onComplete: () => { beam.destroy(); core.destroy(); impact.destroy(); }
         });
-        this.scene.time.delayedCall(900, () => {
-            lineShape.destroy();
-            // 激光特效
-            this.scene.particles.lineBeam(this.screenX(), this.screenY(),
-                telegraphEndX, telegraphEndY, this.config.glowColor, 30);
-            const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
-                this.scene.playerWorldX, this.scene.playerWorldY);
-            if (d < 600) this.scene.playerTakeDamage(this.damage * 0.7);
-        });
+        
+        this.showBossText('激光！', '#ff4444');
     }
     enrage() { this.speed *= 1.2; this.damage = Math.floor(this.damage * 1.15); }
     summonGoblins() { this.spawnMinions(); }
+    throwCoin() {
+        // 哥布林王：向四周撒金币弹（金币弹有伤害）
+        const count = this.phase === 3 ? 12 : 8;
+        for (let i = 0; i < count; i++) {
+            const a = (i / count) * Math.PI * 2 + Math.random() * 0.3;
+            this.scene.projectiles.push(new Projectile(
+                this.scene, this.worldX, this.worldY,
+                this.worldX + Math.cos(a) * 350, this.worldY + Math.sin(a) * 350,
+                this.damage * 0.4, 'bone', { speed: 280, color: 0xffd700, size: 5 }));
+        }
+        this.showBossText('金币雨！', '#ffd700');
+    }
     throwBone() {
         for (let i = 0; i < (this.phase === 3 ? 8 : 5); i++) {
             const a = (i / 5) * Math.PI;
@@ -2612,6 +2679,35 @@ class Boss {
                 this.worldX + Math.cos(a) * 400, this.worldY + Math.sin(a) * 400,
                 this.damage * 0.6, 'bone', { speed: 320, color: 0xd4a574 }));
         }
+    }
+    boneLaser() {
+        // 骷髅领主：发射骨刺激光（扇形3道）
+        const baseA = Math.atan2(this.scene.playerWorldY - this.worldY,
+            this.scene.playerWorldX - this.worldX);
+        for (let i = -1; i <= 1; i++) {
+            const a = baseA + i * 0.3;
+            const range = 500;
+            const endX = this.worldX + Math.cos(a) * range;
+            const endY = this.worldY + Math.sin(a) * range;
+            // 闪光效果
+            const flash = this.scene.add.circle(this.screenX(), this.screenY(), 15, 0xd4a574, 0.5);
+            flash.setDepth(155);
+            this.scene.tweens.add({
+                targets: flash, scale: 4, alpha: 0,
+                duration: 350, ease: 'Cubic.easeOut', onComplete: () => flash.destroy()
+            });
+            // 伤害判定
+            const hits = this.scene.enemyManager.getEnemiesOnLine(
+                this.worldX, this.worldY, endX, endY, 30);
+            hits.forEach(e => e.takeDamage(this.damage * 0.8, false));
+            if (this.scene.bossManager.boss && this.scene.bossManager.boss.alive) {
+                const b = this.scene.bossManager.boss;
+                const d = this.scene.enemyManager.pointToLineDistance(
+                    b.worldX, b.worldY, this.worldX, this.worldY, endX, endY);
+                if (d <= 30 + b.hitRadius) b.takeDamage(this.damage * 0.8, false);
+            }
+        }
+        this.showBossText('骨刺激光！', '#d4a574');
     }
     summonSkeletons() { this.spawnMinions(); }
     deathBloom() {
@@ -2627,8 +2723,6 @@ class Boss {
     fireBreath() {
         const a = Math.atan2(this.scene.playerWorldY - this.worldY,
             this.scene.playerWorldX - this.worldX);
-        this.scene.particles.lineBeam(this.screenX(), this.screenY(),
-            this.screenX() + Math.cos(a) * 400, this.screenY() + Math.sin(a) * 400, 0xff4400, 35);
         for (let i = 0; i < 6; i++) {
             this.scene.projectiles.push(new Projectile(
                 this.scene, this.worldX, this.worldY,
@@ -2665,19 +2759,51 @@ class Boss {
     darkSlash() {
         const a = Math.atan2(this.scene.playerWorldY - this.worldY,
             this.scene.playerWorldX - this.worldX);
-        this.scene.particles.slash(this.screenX(), this.screenY(), a, 0x880044, 250, Math.PI / 1.5);
+        // 增强暗影斩视觉效果：可见的暗影弧线
+        const sx = this.screenX(), sy = this.screenY();
+        const range = 280;
+        const ex = sx + Math.cos(a) * range;
+        const ey = sy + Math.sin(a) * range;
+        // 暗影弧线主体
+        const arc = this.scene.add.rectangle((sx + ex) / 2, (sy + ey) / 2, range, 20, 0x880044, 0.85)
+            .setOrigin(0.5).setRotation(a).setDepth(150);
+        const arcCore = this.scene.add.rectangle((sx + ex) / 2, (sy + ey) / 2, range, 8, 0xff0066, 0.95)
+            .setOrigin(0.5).setRotation(a).setDepth(151);
+        // 暗影粒子
+        for (let i = 0; i < 10; i++) {
+            const t = i / 10;
+            const px = sx + (ex - sx) * t;
+            const py = sy + (ey - sy) * t;
+            const p = this.scene.add.circle(px, py, 5 + Math.random() * 4, 0xaa0066, 0.8).setDepth(149);
+            this.scene.tweens.add({
+                targets: p, alpha: 0, scale: 2,
+                duration: 400 + Math.random() * 200,
+                onComplete: () => p.destroy()
+            });
+        }
+        this.scene.tweens.add({
+            targets: [arc, arcCore], alpha: 0, scale: 0.5,
+            duration: 500, ease: 'Cubic.easeOut',
+            onComplete: () => { arc.destroy(); arcCore.destroy(); }
+        });
+        this.scene.particles.slash(sx, sy, a, 0x880044, 250, Math.PI / 1.5);
         const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
             this.scene.playerWorldX, this.scene.playerWorldY);
         if (d < 250) this.scene.playerTakeDamage(this.damage * 1.2);
+        this.showBossText('暗影斩！', '#aa0066');
     }
     hellfire() {
+        // 增强地狱火视觉效果：可见的火焰弹
         for (let i = 0; i < 8; i++) {
             const a = (i / 8) * Math.PI * 2;
             this.scene.projectiles.push(new Projectile(
                 this.scene, this.worldX, this.worldY,
                 this.worldX + Math.cos(a) * 200, this.worldY + Math.sin(a) * 200,
-                this.damage * 0.5, 'fire', { speed: 220, color: 0xff0000, size: 10 }));
+                this.damage * 0.5, 'fire', { speed: 220, color: 0xff0000, size: 14 }));
         }
+        // 中心爆炸效果
+        this.scene.particles.explosion(this.screenX(), this.screenY(), 100, 0xff3300);
+        this.showBossText('地狱火！', '#ff3300');
     }
     summonDemon() { this.spawnMinions(); }
     timeSlow() {
@@ -2772,8 +2898,6 @@ class Boss {
     deathRay() {
         const a = Math.atan2(this.scene.playerWorldY - this.worldY,
             this.scene.playerWorldX - this.worldX);
-        this.scene.particles.lineBeam(this.screenX(), this.screenY(),
-            this.screenX() + Math.cos(a) * 800, this.screenY() + Math.sin(a) * 800, 0xff00ff, 40);
         const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
             this.scene.playerWorldX, this.scene.playerWorldY);
         if (d < 800) this.scene.playerTakeDamage(this.damage * 1.5);
@@ -2818,15 +2942,14 @@ class Boss {
         this.hp -= amount; this.updateHpBar();
         this.scene.showDamageNumber(this.screenX(), this.screenY() - 50, amount, isCrit);
         if (isCrit) this.scene.particles.critEffect(this.screenX(), this.screenY() - 40);
-        // 骷髅领主：HP低于50%/25%时分裂（仅本体，克隆体/幻影不再触发，避免无限分裂）
+        // 骷髅领主：HP低于40%时分裂一次（仅本体，最多2个幻影，不再二次分裂）
         if (this.config.id === 'sl' && this.hp > 0 && !this._isClone && !this._isPhantom) {
-            if (this.hp <= this.maxHp * 0.5 && !this._split1) {
+            if (this.hp <= this.maxHp * 0.4 && !this._split1) {
                 this._split1 = true;
-                this.splitInto(2, 0.5);
-            }
-            if (this.hp <= this.maxHp * 0.25 && !this._split2) {
-                this._split2 = true;
-                this.splitInto(4, 0.25);
+                const currentPhantoms = this.scene.bossManager.phantoms ? this.scene.bossManager.phantoms.length : 0;
+                if (currentPhantoms < 2) {
+                    this.splitInto(2, 0.35);
+                }
             }
         }
         // 暗影神：HP低于75%/50%/25%时召唤前序BOSS幻影（仅本体）
@@ -2951,16 +3074,21 @@ class Boss {
             this.scene.runtime.addGold(Math.floor(cfg.gold * 0.3));
             this.scene.runtime.addExp(Math.floor(cfg.exp * 0.3));
             this.scene.particles.explosion(this.screenX(), this.screenY(), 60, cfg.glowColor);
-            this.scene.tweens.add({
-                targets: this.container,
-                alpha: 0, scale: 0, duration: 500, ease: 'Cubic.easeIn',
-                onComplete: () => { if (this.container) this.container.destroy(); }
-            });
+            // 立即销毁容器，防止尸体堆积
+            if (this.container) {
+                this.container.destroy();
+                this.container = null;
+            }
             if (this.hpBar) this.hpBar.destroy();
             if (this.hpBarBg) this.hpBarBg.destroy();
             if (this.hpBarGlow) this.hpBarGlow.destroy();
             if (this.nameText) this.nameText.destroy();
             this.hpBar = null; this.hpBarBg = null; this.hpBarGlow = null; this.nameText = null;
+            // 清空BossManager中的引用
+            if (this.scene.bossManager && this.scene.bossManager.phantoms) {
+                const idx = this.scene.bossManager.phantoms.indexOf(this);
+                if (idx >= 0) this.scene.bossManager.phantoms.splice(idx, 1);
+            }
             return;
         }
         this.scene.runtime.bossKills++;
@@ -2986,18 +3114,20 @@ class Boss {
                 });
             }
         }
-        this.scene.tweens.add({
-            targets: this.container,
-            alpha: 0, scale: 0, duration: 800, ease: 'Cubic.easeIn',
-            onComplete: () => {
-                if (this.container) this.container.destroy();
-            }
-        });
+        // 立即销毁容器，防止尸体堆积
+        if (this.container) {
+            this.container.destroy();
+            this.container = null;
+        }
         if (this.hpBar) this.hpBar.destroy();
         if (this.hpBarBg) this.hpBarBg.destroy();
         if (this.hpBarGlow) this.hpBarGlow.destroy();
         if (this.nameText) this.nameText.destroy();
         this.hpBar = null; this.hpBarBg = null; this.hpBarGlow = null; this.nameText = null;
+        // 清空BossManager中的引用
+        if (this.scene.bossManager && this.scene.bossManager.boss === this) {
+            this.scene.bossManager.boss = null;
+        }
     }
 }
 
@@ -3180,51 +3310,124 @@ class RuntimeData {
     }
 }
 
-// ==================== 随从系统 ====================
-class Minion {
+// ==================== 宠物系统 ====================
+const PetConfigs = {
+    light: { name: '光明宠物', icon: '✨', dmg: 18, interval: 800, color: 0xffee88, glowColor: 0xffffaa, size: 16, desc: '快速攻击，光属性' },
+    shadow: { name: '暗影宠物', icon: '', dmg: 30, interval: 1500, color: 0x6644aa, glowColor: 0x8866cc, size: 22, desc: '高伤害，暗属性' },
+    fire: { name: '火焰宠物', icon: '🔥', dmg: 22, interval: 1000, color: 0xff6622, glowColor: 0xffaa44, size: 18, desc: '燃烧伤害，火属性' },
+    ice: { name: '寒冰宠物', icon: '', dmg: 20, interval: 1100, color: 0x88ddff, glowColor: 0xaaffff, size: 20, desc: '减速控制，冰属性' },
+    lightning: { name: '闪电宠物', icon: '', dmg: 25, interval: 1200, color: 0xffee44, glowColor: 0xffffaa, size: 19, desc: '连锁闪电，雷属性' }
+};
+
+class Pet {
     constructor(scene, type) {
         this.scene = scene; this.type = type;
         this.worldX = 0; this.worldY = 0;
         this.container = null; this.lastAttack = 0;
-        this.damage = 10; this.orbitAngle = Math.random() * Math.PI * 2;
-        this.orbitSpeed = 0.002; this.orbitRadius = 65;
+        this.orbitAngle = Math.random() * Math.PI * 2;
+        this.orbitRadius = 120; // 增大轨道半径，让宠物运动更明显
+        this.attackRange = 500; // 增大攻击范围
         this.targetEnemy = null;
+        this.attackAnim = 0;
+        this.attacking = false;
+        this.attackTarget = null;
+        this.returningToOrbit = false;
+        this.orbitReturnTimer = 0;
+        this.trailTimer = 0; // 拖尾效果计时器
     }
-    get config() {
-        const configs = {
-            light: { name: '光明精灵', dmg: 15, interval: 1000, color: 0xffee88, glowColor: 0xffffaa, size: 18 },
-            shadow: { name: '暗影战士', dmg: 25, interval: 1800, color: 0x6644aa, glowColor: 0x8866cc, size: 24 },
-            fire: { name: '火焰精灵', dmg: 20, interval: 1200, color: 0xff6622, glowColor: 0xffaa44, size: 20 },
-            ice: { name: '寒冰巫灵', dmg: 18, interval: 1300, color: 0x88ddff, glowColor: 0xaaffff, size: 22 },
-            lightning: { name: '闪电元素', dmg: 22, interval: 1400, color: 0xffee44, glowColor: 0xffffaa, size: 21 }
-        };
-        return configs[this.type] || configs.light;
-    }
+    get config() { return PetConfigs[this.type] || PetConfigs.light; }
     spawn(x, y) {
         this.worldX = x; this.worldY = y;
         const cfg = this.config;
         const sx = this.screenX(), sy = this.screenY();
         this.container = this.scene.add.container(sx, sy);
         this.container.setDepth(70);
-        const glow = this.scene.add.circle(0, 0, cfg.size * 1.8, cfg.glowColor, 0.3);
-        const glow2 = this.scene.add.circle(0, 0, cfg.size * 1.3, cfg.glowColor, 0.5);
+        // 光晕
+        const glow = this.scene.add.circle(0, 0, cfg.size * 2, cfg.glowColor, 0.25);
+        const glow2 = this.scene.add.circle(0, 0, cfg.size * 1.4, cfg.glowColor, 0.4);
+        // 身体
         const body = this.scene.add.circle(0, 0, cfg.size, cfg.color);
-        const core = this.scene.add.circle(0, 0, cfg.size * 0.5, 0xffffff, 0.8);
-        this.container.add([glow, glow2, body, core]);
+        const core = this.scene.add.circle(0, 0, cfg.size * 0.5, 0xffffff, 0.9);
+        // 眼睛
+        const eye1 = this.scene.add.circle(-cfg.size * 0.3, -cfg.size * 0.1, cfg.size * 0.15, 0x000000);
+        const eye2 = this.scene.add.circle(cfg.size * 0.3, -cfg.size * 0.1, cfg.size * 0.15, 0x000000);
+        this.container.add([glow, glow2, body, core, eye1, eye2]);
         this.minionGlow = glow;
+        this.petBody = body;
     }
     screenX() { return this.worldX - this.scene.playerWorldX + GW / 2; }
     screenY() { return this.worldY - this.scene.playerWorldY + GH / 2; }
     update(time, delta) {
-        if (!this.container) return;
+        if (!this.container || !this.container.active) return;
         const cfg = this.config;
-        this.orbitAngle += 0.002;
-        this.worldX = this.scene.playerWorldX + Math.cos(this.orbitAngle) * this.orbitRadius;
-        this.worldY = this.scene.playerWorldY + Math.sin(this.orbitAngle) * this.orbitRadius;
-        this.container.x = this.screenX();
-        this.container.y = this.screenY();
-        const pulse = 1 + Math.sin(time * 0.005) * 0.15;
-        this.minionGlow.scale = pulse;
+        const dt = delta / 1000;
+        
+        // 攻击状态：冲向目标并返回
+        if (this.attacking && this.attackTarget) {
+            // 目标死亡或消失，立即返回轨道
+            if (!this.attackTarget.alive || !this.attackTarget.container) {
+                this.attacking = false;
+                this.returningToOrbit = true;
+                this.orbitReturnTimer = 0.8;
+            } else {
+                const dx = this.attackTarget.worldX - this.worldX;
+                const dy = this.attackTarget.worldY - this.worldY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 30) {
+                    const speed = 500;
+                    this.worldX += (dx / dist) * speed * dt;
+                    this.worldY += (dy / dist) * speed * dt;
+                } else {
+                    // 攻击完成，开始返回轨道
+                    this.attacking = false;
+                    this.returningToOrbit = true;
+                    this.orbitReturnTimer = 0.8;
+                }
+            }
+        } else if (this.returningToOrbit) {
+            // 返回轨道的平滑过渡
+            this.orbitReturnTimer -= dt;
+            if (this.orbitReturnTimer <= 0) {
+                this.returningToOrbit = false;
+            } else {
+                // 逐渐靠近轨道位置
+                const targetX = this.scene.playerWorldX + Math.cos(this.orbitAngle) * this.orbitRadius;
+                const targetY = this.scene.playerWorldY + Math.sin(this.orbitAngle) * this.orbitRadius;
+                const dx = targetX - this.worldX;
+                const dy = targetY - this.worldY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 5) {
+                    const speed = 300;
+                    this.worldX += (dx / dist) * speed * dt;
+                    this.worldY += (dy / dist) * speed * dt;
+                }
+            }
+        } else {
+            // 跟随玩家，围绕玩家旋转（持续旋转）- 提高速度让运动更明显
+            this.orbitAngle += dt * 4.0; // 每秒旋转4弧度（加快）
+            // 直接更新位置，不使用平滑过渡
+            this.worldX = this.scene.playerWorldX + Math.cos(this.orbitAngle) * this.orbitRadius;
+            this.worldY = this.scene.playerWorldY + Math.sin(this.orbitAngle) * this.orbitRadius;
+        }
+        
+        // 确保容器位置更新
+        const sx = this.screenX();
+        const sy = this.screenY();
+        this.container.setPosition(sx, sy);
+        
+        // 呼吸效果
+        const pulse = 1 + Math.sin(time * 0.008) * 0.15;
+        if (this.minionGlow) this.minionGlow.scale = pulse;
+        
+        // 攻击动画
+        if (this.attackAnim > 0) {
+            this.attackAnim -= dt;
+            if (this.petBody) this.petBody.scale = 1 + this.attackAnim * 0.8;
+        } else {
+            if (this.petBody) this.petBody.scale = 1;
+        }
+        
+        // 自动攻击
         if (time - this.lastAttack > cfg.interval) {
             this.lastAttack = time;
             this.performAttack(time);
@@ -3232,18 +3435,45 @@ class Minion {
     }
     performAttack(time) {
         const cfg = this.config;
-        let nearest = null, nd = 350;
+        // 寻找最近的敌人
+        let nearest = null, nd = this.attackRange;
         for (const e of this.scene.enemyManager.enemies) {
             if (!e.alive) continue;
             const d = Phaser.Math.Distance.Between(this.worldX, this.worldY, e.worldX, e.worldY);
             if (d < nd) { nd = d; nearest = e; }
         }
         if (!nearest) return;
+        
+        // 进入攻击状态：冲向目标
+        this.attacking = true;
+        this.attackTarget = nearest;
+        this.attackAnim = 0.4;
+        
+        // 计算伤害
         const dmg = Math.floor(cfg.dmg * (1 + (this.scene.runtime.spec.minionDmg || 0) * 0.5));
         nearest.takeDamage(dmg, false);
-        this.scene.particles.lineBeam(this.screenX(), this.screenY(),
-            nearest.worldX - this.scene.playerWorldX + GW / 2,
-            nearest.worldY - this.scene.playerWorldY + GH / 2, cfg.color, 4);
+        
+        // 攻击特效 - 显示伤害数字
+        const sx = this.screenX(), sy = this.screenY();
+        this.scene.particles.hit(sx, sy, cfg.color, 8, 3);
+        this.scene.showDamageNumber(nearest.worldX, nearest.worldY, dmg, cfg.color);
+        
+        // 属性特效
+        if (this.type === 'fire' && nearest.applyBurn) {
+            nearest.applyBurn(cfg.dmg * 0.3, 3000);
+        } else if (this.type === 'ice' && nearest.applyFreeze) {
+            nearest.applyFreeze(1000);
+        } else if (this.type === 'lightning') {
+            // 连锁闪电：额外伤害附近敌人
+            for (const e of this.scene.enemyManager.enemies) {
+                if (e !== nearest && e.alive) {
+                    const d = Phaser.Math.Distance.Between(nearest.worldX, nearest.worldY, e.worldX, e.worldY);
+                    if (d < 120) {
+                        e.takeDamage(Math.floor(dmg * 0.5), false);
+                    }
+                }
+            }
+        }
     }
     destroy() {
         if (this.container) { this.container.destroy(); this.container = null; }
@@ -3405,6 +3635,11 @@ class BossManager {
     }
     spawnBoss() {
         this.warningActive = false;
+        // 清理旧 BOSS UI 元素
+        if (this.bossUI) {
+            this.bossUI.forEach(e => e.destroy());
+            this.bossUI = [];
+        }
         // 彻底清理旧 BOSS：设 null 防止残留
         if (this.boss) {
             if (this.boss.container) this.boss.container.destroy();
@@ -4049,44 +4284,19 @@ class GameScene extends Phaser.Scene {
                 g.fillCircle(cx, cy, 8);
             }
         } else if (regId === 4) {
-            // 裂隙：岩浆裂缝脉动
-            const pulse = 0.4 + Math.sin(time * 0.003) * 0.2;
-            g.lineStyle(8, 0xff3300, pulse);
+            // 裂隙：微弱地面裂纹（不再画横跨屏幕的红线）
+            g.fillStyle(0xff3300, 0.06);
+            for (let i = 0; i < 8; i++) {
+                const cx = ((i * 197 + 50) % GW);
+                const cy = ((i * 131 + 80) % GH);
+                g.fillEllipse(cx, cy, 40 + Math.sin(time * 0.002 + i) * 10, 3);
+            }
+            // 少量飘浮火星
+            g.fillStyle(0xff6600, 0.15);
             for (let i = 0; i < 4; i++) {
-                const y = GH * (0.2 + i * 0.2);
-                g.beginPath();
-                g.moveTo(0, y);
-                g.lineTo(GW, y + Math.sin(time * 0.001 + i) * 30);
-                g.strokePath();
-            }
-            g.fillStyle(0xff6600, 0.3);
-            for (let i = 0; i < 6; i++) {
-                const ex = (time * 0.1 + i * 200) % GW;
-                const ey = GH * 0.5 + Math.sin(time * 0.002 + i) * 100;
-                g.fillCircle(ex, ey, 4 + Math.sin(time * 0.005 + i) * 2);
-            }
-        }
-
-        // 边界警告：只在屏幕边缘显示细条，不覆盖整个屏幕
-        const edgeDist = WS / 2 - 100;
-        if (Math.abs(this.playerWorldX) > edgeDist || Math.abs(this.playerWorldY) > edgeDist) {
-            const edgeAlpha = Math.min(0.4, (Math.max(Math.abs(this.playerWorldX), Math.abs(this.playerWorldY)) - edgeDist) / 100);
-            // 只在接近的边界边缘显示红色警告条
-            if (this.playerWorldX > edgeDist) {
-                g.fillStyle(0xff0000, edgeAlpha);
-                g.fillRect(GW - 8, 0, 8, GH);
-            }
-            if (this.playerWorldX < -edgeDist) {
-                g.fillStyle(0xff0000, edgeAlpha);
-                g.fillRect(0, 0, 8, GH);
-            }
-            if (this.playerWorldY > edgeDist) {
-                g.fillStyle(0xff0000, edgeAlpha);
-                g.fillRect(0, GH - 8, GW, 8);
-            }
-            if (this.playerWorldY < -edgeDist) {
-                g.fillStyle(0xff0000, edgeAlpha);
-                g.fillRect(0, 0, GW, 8);
+                const ex = (time * 0.05 + i * 250) % GW;
+                const ey = GH * 0.5 + Math.sin(time * 0.001 + i) * 80;
+                g.fillCircle(ex, ey, 2);
             }
         }
     }
@@ -4095,25 +4305,56 @@ class GameScene extends Phaser.Scene {
         this.player = this.add.container(GW / 2, GH / 2);
         this.player.setDepth(100);
 
-        const shadow = this.add.ellipse(0, 18, 24, 8, 0x000000, 0.3);
-        // 双腿（行走时摆动）
-        const legL = this.add.rectangle(-5, 22, 7, 14, 0x2a2a44);
-        const legR = this.add.rectangle(5, 22, 7, 14, 0x2a2a44);
-        const cape = this.add.triangle(-6, 5, -12, -8, -22, 30, -4, 22, 0x2244aa);
-        const capeDark = this.add.triangle(-8, 8, -14, -5, -20, 28, -6, 20, 0x1a3377, 0.6);
-        const body = this.add.ellipse(0, 5, 20, 28, COLORS.playerBody);
-        const bodyDark = this.add.ellipse(0, 10, 16, 12, COLORS.playerBodyDark, 0.5);
-        const head = this.add.circle(0, -14, 15, COLORS.playerHead);
-        const hair = this.add.ellipse(0, -20, 15, 9, COLORS.playerHair);
-        const hairFront = this.add.ellipse(0, -22, 12, 6, COLORS.playerHair, 0.8);
-        const eye1 = this.add.circle(-5, -15, 3, 0x222233);
-        const eye2 = this.add.circle(5, -15, 3, 0x222233);
-        const eyeShine1 = this.add.circle(-4, -16, 1.2, 0xffffff);
-        const eyeShine2 = this.add.circle(6, -16, 1.2, 0xffffff);
-        const belt = this.add.rectangle(0, 8, 22, 5, 0x8B4513);
-        const buckle = this.add.rectangle(0, 8, 6, 7, 0xffd700);
+        // 阴影
+        const shadow = this.add.ellipse(0, 22, 28, 10, 0x000000, 0.35);
 
-        this.player.add([shadow, legL, legR, capeDark, cape, body, bodyDark, belt, buckle, head, hair, hairFront, eye1, eye2, eyeShine1, eyeShine2]);
+        // 双腿（行走时摆动）
+        const legL = this.add.rectangle(-6, 24, 8, 16, 0x2a2a44);
+        const legR = this.add.rectangle(6, 24, 8, 16, 0x2a2a44);
+        const bootL = this.add.rectangle(-6, 32, 10, 5, 0x1a1a2a);
+        const bootR = this.add.rectangle(6, 32, 10, 5, 0x1a1a2a);
+
+        // 披风（多层，更有质感）
+        const cape = this.add.triangle(-8, 8, -14, -10, -28, 35, -6, 28, 0x2244aa);
+        const capeDark = this.add.triangle(-10, 12, -16, -8, -26, 32, -8, 24, 0x1a3377, 0.7);
+        const capeHighlight = this.add.triangle(-7, 5, -12, -6, -20, 25, -5, 18, 0x3366cc, 0.4);
+
+        // 身体（盔甲质感）
+        const body = this.add.ellipse(0, 6, 22, 30, COLORS.playerBody);
+        const bodyDark = this.add.ellipse(0, 12, 18, 14, COLORS.playerBodyDark, 0.6);
+        // 胸甲高光
+        const chestPlate = this.add.ellipse(0, 0, 14, 18, 0x4499ff, 0.5);
+        const chestHighlight = this.add.ellipse(-2, -3, 8, 10, 0x66bbff, 0.3);
+
+        // 腰带
+        const belt = this.add.rectangle(0, 10, 24, 6, 0x8B4513);
+        const buckle = this.add.rectangle(0, 10, 7, 8, 0xffd700);
+        const buckleShine = this.add.rectangle(-1, 9, 3, 3, 0xffffaa, 0.6);
+
+        // 头部（更精致）
+        const head = this.add.circle(0, -16, 16, COLORS.playerHead);
+        const headShadow = this.add.circle(0, -12, 12, 0xddaa77, 0.3);
+        // 头发（更有层次）
+        const hair = this.add.ellipse(0, -23, 17, 10, COLORS.playerHair);
+        const hairFront = this.add.ellipse(0, -25, 13, 7, COLORS.playerHair, 0.9);
+        const hairSide = this.add.ellipse(-10, -18, 6, 12, COLORS.playerHair, 0.7);
+        const hairSide2 = this.add.ellipse(10, -18, 6, 12, COLORS.playerHair, 0.7);
+
+        // 眼睛（更有神）
+        const eye1 = this.add.circle(-6, -17, 3.5, 0x222233);
+        const eye2 = this.add.circle(6, -17, 3.5, 0x222233);
+        const eyeShine1 = this.add.circle(-5, -18, 1.5, 0xffffff);
+        const eyeShine2 = this.add.circle(7, -18, 1.5, 0xffffff);
+        const eyeShine3 = this.add.circle(-7, -16, 0.8, 0xffffff, 0.6);
+        const eyeShine4 = this.add.circle(5, -16, 0.8, 0xffffff, 0.6);
+
+        // 护肩
+        const shoulderL = this.add.ellipse(-14, -2, 10, 8, 0x3366cc);
+        const shoulderR = this.add.ellipse(14, -2, 10, 8, 0x3366cc);
+        const shoulderShineL = this.add.ellipse(-14, -4, 6, 4, 0x5599ff, 0.5);
+        const shoulderShineR = this.add.ellipse(14, -4, 6, 4, 0x5599ff, 0.5);
+
+        this.player.add([shadow, legL, legR, bootL, bootR, capeDark, cape, capeHighlight, body, bodyDark, chestPlate, chestHighlight, belt, buckle, buckleShine, shoulderL, shoulderR, shoulderShineL, shoulderShineR, head, headShadow, hair, hairFront, hairSide, hairSide2, eye1, eye2, eyeShine1, eyeShine2, eyeShine3, eyeShine4]);
 
         this.playerBody = body;
         this.playerHead = head;
@@ -4122,10 +4363,10 @@ class GameScene extends Phaser.Scene {
         this.playerLegL = legL;
         this.playerLegR = legR;
         this.playerEyes = [eye1, eye2];
-        this.playerEyeShines = [eyeShine1, eyeShine2];
+        this.playerEyeShines = [eyeShine1, eyeShine2, eyeShine3, eyeShine4];
         this._blinkTimer = 0;
         this._walkPhase = 0;
-        this.weaponContainer = this.add.container(28, 0);
+        this.weaponContainer = this.add.container(30, 0);
         this.weaponContainer.setDepth(101);
         this.player.add(this.weaponContainer);
     }
@@ -4487,18 +4728,18 @@ class GameScene extends Phaser.Scene {
             stroke: '#000', strokeThickness: 2
         }).setOrigin(1, 0);
 
-        this.timeText = this.add.text(GW / 2, 18, '00:00', {
-            fontSize: '22px', fontFamily: 'Courier New', color: '#fff',
+        this.timeText = this.add.text(GW / 2, 15, '00:00', {
+            fontSize: '20px', fontFamily: 'Courier New', color: '#fff',
             stroke: '#000', strokeThickness: 3
         }).setOrigin(0.5);
 
-        this.waveText = this.add.text(GW / 2, 50, '波次 1 | 00:00', {
-            fontSize: '13px', fontFamily: 'Courier New', color: '#88ddff',
+        this.waveText = this.add.text(GW / 2, 35, '波次 1', {
+            fontSize: '12px', fontFamily: 'Courier New', color: '#88ddff',
             stroke: '#000', strokeThickness: 2
         }).setOrigin(0.5);
 
-        this.chapterText = this.add.text(GW / 2, 73, '', {
-            fontSize: '12px', fontFamily: 'Courier New', color: '#ff88aa',
+        this.chapterText = this.add.text(GW / 2, 52, '', {
+            fontSize: '11px', fontFamily: 'Courier New', color: '#ff88aa',
             stroke: '#000', strokeThickness: 2
         }).setOrigin(0.5);
 
@@ -4619,6 +4860,15 @@ class GameScene extends Phaser.Scene {
         this.menuElements.forEach(e => e.destroy());
         this.menuElements = [];
 
+        // 初始化选择状态
+        if (!this.selectedWeapon) {
+            const unlocked = this.saveData.unlockedWeapons || [];
+            this.selectedWeapon = unlocked.length > 0 ? unlocked[0] : null;
+        }
+        if (!this.selectedPet) {
+            this.selectedPet = 'light';
+        }
+
         const difficulties = [
             { id: 'easy', name: '简单', icon: '🌱', color: 0x44ff88, mult: 0.7, dmgMult: 0.6, rewardMult: 0.8 },
             { id: 'normal', name: '普通', icon: '⚔', color: 0xffdd00, mult: 1.2, dmgMult: 1.0, rewardMult: 1.0 },
@@ -4626,7 +4876,8 @@ class GameScene extends Phaser.Scene {
             { id: 'hell', name: '地狱', icon: '💀', color: 0xaa00ff, mult: 2.8, dmgMult: 2.0, rewardMult: 3.0 }
         ];
         this.menuDifficulties = difficulties;
-        // v5：难度锁系统——默认选已解锁的最高难度
+        
+        // 难度锁系统
         if (!this.selectedDifficulty) {
             const unlocked = this.saveData.unlockedDifficulties || ['easy'];
             const order = ['easy', 'normal', 'hard', 'hell'];
@@ -4634,6 +4885,7 @@ class GameScene extends Phaser.Scene {
             this.selectedDifficulty = difficulties.find(d => d.id === highestUnlocked) || difficulties[0];
         }
 
+        // 背景
         const bg = this.add.rectangle(0, 0, GW, GH, 0x000000, 0.9).setOrigin(0).setDepth(400);
         for (let i = 0; i < 30; i++) {
             const star = this.add.star(Math.random() * GW, Math.random() * GH,
@@ -4644,44 +4896,45 @@ class GameScene extends Phaser.Scene {
             });
         }
 
-        const title = this.add.text(GW / 2, 70, '⚔ 暗影猎手 ⚔', {
-            fontSize: '58px', fontFamily: 'Courier New',
-            color: '#ff4488', stroke: '#000', strokeThickness: 7, fontWeight: 'bold'
+        // 标题 - 更小
+        const title = this.add.text(GW / 2, 50, '⚔ 暗影猎手 ⚔', {
+            fontSize: '48px', fontFamily: 'Courier New',
+            color: '#ff4488', stroke: '#000', strokeThickness: 6, fontWeight: 'bold'
         }).setOrigin(0.5).setDepth(401);
-        const titleGlow = this.add.text(GW / 2, 70, '⚔ 暗影猎手 ⚔', {
-            fontSize: '58px', fontFamily: 'Courier New',
-            color: '#ff88aa', stroke: '#000', strokeThickness: 7, fontWeight: 'bold'
+        const titleGlow = this.add.text(GW / 2, 50, '⚔ 暗影猎手 ⚔', {
+            fontSize: '48px', fontFamily: 'Courier New',
+            color: '#ff88aa', stroke: '#000', strokeThickness: 6, fontWeight: 'bold'
         }).setOrigin(0.5).setDepth(400).setAlpha(0.4);
         this.tweens.add({
             targets: titleGlow, scale: { from: 1, to: 1.05 }, alpha: { from: 0.4, to: 0.1 },
             yoyo: true, duration: 1500, repeat: -1
         });
 
-        const subtitle = this.add.text(GW / 2, 125, '神 话 版 v5 · Mythic V', {
-            fontSize: '22px', fontFamily: 'Courier New',
-            color: '#ffaa66', stroke: '#000', strokeThickness: 3
+        const subtitle = this.add.text(GW / 2, 95, '神 话 版 v5 · Mythic V', {
+            fontSize: '18px', fontFamily: 'Courier New',
+            color: '#ffaa66', stroke: '#000', strokeThickness: 2
         }).setOrigin(0.5).setDepth(401);
 
-        const diffTitle = this.add.text(GW / 2, 165, '— 选择难度 —', {
-            fontSize: '17px', fontFamily: 'Courier New', color: '#88ddff',
+        // 难度选择 - 紧凑布局
+        const diffTitle = this.add.text(GW / 2, 130, '— 选择难度 —', {
+            fontSize: '15px', fontFamily: 'Courier New', color: '#88ddff',
             stroke: '#000', strokeThickness: 2
         }).setOrigin(0.5).setDepth(401);
 
-        const diffY = 215;
+        const diffY = 165;
         difficulties.forEach((d, i) => {
-            const x = GW / 2 + (i - 1.5) * 130;
+            const x = GW / 2 + (i - 1.5) * 110;
             const isSel = this.selectedDifficulty.id === d.id;
-            // v5：难度锁判定
             const unlocked = this.saveData.unlockedDifficulties || ['easy'];
             const isLocked = !unlocked.includes(d.id);
-            const card = this.add.rectangle(x, diffY, 110, 70,
+            const card = this.add.rectangle(x, diffY, 95, 55,
                 isLocked ? 0x222222 : (isSel ? d.color : 0x111122),
                 isLocked ? 0.7 : (isSel ? 0.95 : 0.85))
-                .setStrokeStyle(isSel ? 4 : 2, isLocked ? 0x555555 : (isSel ? 0xffffff : d.color))
+                .setStrokeStyle(isSel ? 3 : 2, isLocked ? 0x555555 : (isSel ? 0xffffff : d.color))
                 .setInteractive().setDepth(401);
-            const ic = this.add.text(x, diffY - 18, isLocked ? '🔒' : d.icon, { fontSize: '26px' }).setOrigin(0.5).setDepth(402);
+            const ic = this.add.text(x, diffY - 12, isLocked ? '🔒' : d.icon, { fontSize: '22px' }).setOrigin(0.5).setDepth(402);
             const nm = this.add.text(x, diffY + 12, d.name, {
-                fontSize: '15px', fontFamily: 'Courier New',
+                fontSize: '13px', fontFamily: 'Courier New',
                 color: isLocked ? '#666' : '#fff', fontWeight: 'bold'
             }).setOrigin(0.5).setDepth(402);
             let bn;
@@ -4689,25 +4942,25 @@ class GameScene extends Phaser.Scene {
                 const order = ['easy', 'normal', 'hard', 'hell'];
                 const prevIdx = order.indexOf(d.id) - 1;
                 const prevName = prevIdx >= 0 ? difficulties[prevIdx].name : '';
-                bn = this.add.text(x, diffY + 32, `通关${prevName}解锁`, {
-                    fontSize: '9px', fontFamily: 'Courier New', color: '#ff6644'
+                bn = this.add.text(x, diffY + 25, `通关${prevName}解锁`, {
+                    fontSize: '8px', fontFamily: 'Courier New', color: '#ff6644'
                 }).setOrigin(0.5).setDepth(402);
             } else {
-                const bonus = d.rewardMult > 1 ? `奖励×${d.rewardMult}` : (d.rewardMult < 1 ? `奖励×${d.rewardMult}` : '标准');
-                bn = this.add.text(x, diffY + 32, bonus, {
-                    fontSize: '9px', fontFamily: 'Courier New', color: '#ffd700'
+                const bonus = d.rewardMult > 1 ? `×${d.rewardMult}` : (d.rewardMult < 1 ? `×${d.rewardMult}` : '标准');
+                bn = this.add.text(x, diffY + 25, bonus, {
+                    fontSize: '8px', fontFamily: 'Courier New', color: '#ffd700'
                 }).setOrigin(0.5).setDepth(402);
             }
-            card.on('pointerover', () => { if (!isLocked) card.setStrokeStyle(4, 0xffffff); });
+            card.on('pointerover', () => { if (!isLocked) card.setStrokeStyle(3, 0xffffff); });
             card.on('pointerout', () => {
                 if (!isLocked && this.selectedDifficulty.id !== d.id) card.setStrokeStyle(2, d.color);
             });
             card.on('pointerdown', () => {
                 if (isLocked) {
-                    const tipTxt = this.add.text(x, diffY - 50, '🔒 未解锁', {
-                        fontSize: '14px', fontFamily: 'Courier New', color: '#ff4444', fontWeight: 'bold'
+                    const tipTxt = this.add.text(x, diffY - 40, '🔒 未解锁', {
+                        fontSize: '12px', fontFamily: 'Courier New', color: '#ff4444', fontWeight: 'bold'
                     }).setOrigin(0.5).setDepth(403);
-                    this.tweens.add({ targets: tipTxt, alpha: 0, y: tipTxt.y - 20, duration: 1000, onComplete: () => tipTxt.destroy() });
+                    this.tweens.add({ targets: tipTxt, alpha: 0, y: tipTxt.y - 15, duration: 800, onComplete: () => tipTxt.destroy() });
                     return;
                 }
                 this.selectedDifficulty = d;
@@ -4718,93 +4971,180 @@ class GameScene extends Phaser.Scene {
             this.menuElements.push(card, ic, nm, bn);
         });
 
-        const wpTitle = this.add.text(GW / 2, 305, '— 选择武器 —', {
-            fontSize: '17px', fontFamily: 'Courier New', color: '#88ddff',
+        // 武器选择 - 点击选择，不开始游戏
+        const wpTitle = this.add.text(GW / 2, 210, '— 选择武器 —', {
+            fontSize: '15px', fontFamily: 'Courier New', color: '#88ddff',
             stroke: '#000', strokeThickness: 2
         }).setOrigin(0.5).setDepth(401);
 
         const allWeapons = WeaponFactory.all();
         const weapons = allWeapons.filter(w => this.saveData.unlockedWeapons.includes(w));
         const totalUnlocked = weapons.length;
+        const wpY = 275;
         weapons.forEach((w, i) => {
-            const x = GW / 2 + (i - (totalUnlocked - 1) / 2) * 130;
-            const y = 385;
+            const x = GW / 2 + (i - (totalUnlocked - 1) / 2) * 120;
             const info = WeaponFactory.info(w);
-            const cfg = WeaponFactory.configs[w];
-            const cardBg = this.add.rectangle(x, y, 115, 130, 0x111122, 0.95)
-                .setStrokeStyle(3, info.color).setInteractive().setDepth(401);
-            const cardInner = this.add.rectangle(x, y, 107, 122, 0x1a1a2e, 0.95).setDepth(401);
-            const icon = this.add.text(x, y - 40, info.icon, { fontSize: '40px' }).setOrigin(0.5).setDepth(402);
-            const name = this.add.text(x, y + 0, info.name, {
-                fontSize: '14px', fontFamily: 'Courier New', color: '#ffffff', fontWeight: 'bold'
+            const isSel = this.selectedWeapon === w;
+            const cardBg = this.add.rectangle(x, wpY, 110, 110, 0x111122, 0.95)
+                .setStrokeStyle(isSel ? 4 : 2, isSel ? 0xffd700 : info.color).setInteractive().setDepth(401);
+            const cardInner = this.add.rectangle(x, wpY, 102, 102, 0x1a1a2e, 0.95).setDepth(401);
+            const icon = this.add.text(x, wpY - 30, info.icon, { fontSize: '36px' }).setOrigin(0.5).setDepth(402);
+            const name = this.add.text(x, wpY + 5, info.name, {
+                fontSize: '12px', fontFamily: 'Courier New', color: '#ffffff', fontWeight: 'bold'
             }).setOrigin(0.5).setDepth(402);
-            const desc = this.add.text(x, y + 42, info.desc, {
-                fontSize: '10px', fontFamily: 'Courier New', color: '#aaa',
-                align: 'center', wordWrap: { width: 100 }
+            const desc = this.add.text(x, wpY + 35, info.desc, {
+                fontSize: '9px', fontFamily: 'Courier New', color: '#aaa',
+                align: 'center', wordWrap: { width: 95 }
             }).setOrigin(0.5).setDepth(402);
 
             cardBg.on('pointerover', () => {
-                cardBg.setStrokeStyle(5, info.color);
-                this.tweens.add({ targets: cardBg, scale: 1.08, duration: 150 });
+                cardBg.setStrokeStyle(isSel ? 4 : 3, isSel ? 0xffd700 : info.color);
+                this.tweens.add({ targets: cardBg, scale: 1.05, duration: 100 });
             });
             cardBg.on('pointerout', () => {
-                cardBg.setStrokeStyle(3, info.color);
-                this.tweens.add({ targets: cardBg, scale: 1, duration: 150 });
+                cardBg.setStrokeStyle(isSel ? 4 : 2, isSel ? 0xffd700 : info.color);
+                this.tweens.add({ targets: cardBg, scale: 1, duration: 100 });
             });
             cardBg.on('pointerdown', () => {
-                this.startGame(w);
+                this.selectedWeapon = w;
+                this.menuElements.forEach(e => e.destroy());
+                this.menuElements = [];
+                this.showMainMenu();
             });
             this.menuElements.push(cardBg, cardInner, icon, name, desc);
         });
 
-        const tips = this.add.text(GW / 2, GH - 115,
-            'WASD 移动 | 鼠标瞄准自动攻击 | 空格 技能 | Q 切武器 | 1/2 快速切换 | Shift 冲刺 | E 闪现 | ESC 暂停', {
-            fontSize: '12px', fontFamily: 'Courier New', color: '#888'
+        // 宠物选择
+        const petTitle = this.add.text(GW / 2, 345, '— 选择宠物 —', {
+            fontSize: '15px', fontFamily: 'Courier New', color: '#88ddff',
+            stroke: '#000', strokeThickness: 2
         }).setOrigin(0.5).setDepth(401);
 
-        // v5：三资源显示
-        const resDisplay = this.add.text(GW / 2, 470,
-            `✦ 魂石: ${this.saveData.soulStones || 0}  |  ⛏ 玄铁: ${this.saveData.darkIron || 0}  |  ✺ BOSS之血: ${this.saveData.bossBlood || 0}`, {
-            fontSize: '15px', fontFamily: 'Courier New', color: '#ffffff',
-            stroke: '#000', strokeThickness: 2, fontWeight: 'bold'
-        }).setOrigin(0.5).setDepth(401);
+        const petTypes = Object.keys(PetConfigs);
+        const petY = 400;
+        petTypes.forEach((p, i) => {
+            const x = GW / 2 + (i - (petTypes.length - 1) / 2) * 105;
+            const cfg = PetConfigs[p];
+            const isSel = this.selectedPet === p;
+            const cardBg = this.add.rectangle(x, petY, 100, 100, 0x111122, 0.95)
+                .setStrokeStyle(isSel ? 4 : 2, isSel ? 0xffd700 : cfg.color).setInteractive().setDepth(401);
+            const cardInner = this.add.rectangle(x, petY, 92, 92, 0x1a1a2e, 0.95).setDepth(401);
+            const icon = this.add.text(x, petY - 25, cfg.icon, { fontSize: '32px' }).setOrigin(0.5).setDepth(402);
+            const name = this.add.text(x, petY + 5, cfg.name, {
+                fontSize: '11px', fontFamily: 'Courier New', color: '#ffffff', fontWeight: 'bold'
+            }).setOrigin(0.5).setDepth(402);
+            const desc = this.add.text(x, petY + 30, cfg.desc, {
+                fontSize: '8px', fontFamily: 'Courier New', color: '#aaa',
+                align: 'center', wordWrap: { width: 85 }
+            }).setOrigin(0.5).setDepth(402);
 
-        const smithyBtn = this.add.rectangle(GW / 2 - 90, 505, 160, 36, 0x332211, 0.95)
+            cardBg.on('pointerover', () => {
+                cardBg.setStrokeStyle(isSel ? 4 : 3, isSel ? 0xffd700 : cfg.color);
+                this.tweens.add({ targets: cardBg, scale: 1.05, duration: 100 });
+            });
+            cardBg.on('pointerout', () => {
+                cardBg.setStrokeStyle(isSel ? 4 : 2, isSel ? 0xffd700 : cfg.color);
+                this.tweens.add({ targets: cardBg, scale: 1, duration: 100 });
+            });
+            cardBg.on('pointerdown', () => {
+                this.selectedPet = p;
+                this.menuElements.forEach(e => e.destroy());
+                this.menuElements = [];
+                this.showMainMenu();
+            });
+            this.menuElements.push(cardBg, cardInner, icon, name, desc);
+        });
+
+        // 开始游戏按钮
+        const startY = 470;
+        const startBtn = this.add.rectangle(GW / 2, startY, 200, 45, 0x224422, 0.95)
+            .setStrokeStyle(3, 0x44ff88).setInteractive().setDepth(401);
+        const startTxt = this.add.text(GW / 2, startY, '▶ 开始游戏', {
+            fontSize: '18px', fontFamily: 'Courier New', color: '#44ff88', fontWeight: 'bold',
+            stroke: '#000', strokeThickness: 2
+        }).setOrigin(0.5).setDepth(402);
+        
+        startBtn.on('pointerover', () => {
+            startBtn.setStrokeStyle(4, 0xffffff);
+            startBtn.setFillStyle(0x336633, 0.95);
+        });
+        startBtn.on('pointerout', () => {
+            startBtn.setStrokeStyle(3, 0x44ff88);
+            startBtn.setFillStyle(0x224422, 0.95);
+        });
+        startBtn.on('pointerdown', () => {
+            if (!this.selectedWeapon) {
+                const warnTxt = this.add.text(GW / 2, startY - 35, '⚠ 请先选择武器！', {
+                    fontSize: '14px', fontFamily: 'Courier New', color: '#ff4444', fontWeight: 'bold',
+                    stroke: '#000', strokeThickness: 2
+                }).setOrigin(0.5).setDepth(403);
+                this.tweens.add({ targets: warnTxt, alpha: 0, y: warnTxt.y - 20, duration: 1200, onComplete: () => warnTxt.destroy() });
+                return;
+            }
+            if (!this.selectedPet) {
+                const warnTxt = this.add.text(GW / 2, startY - 35, '⚠ 请先选择宠物！', {
+                    fontSize: '14px', fontFamily: 'Courier New', color: '#ff4444', fontWeight: 'bold',
+                    stroke: '#000', strokeThickness: 2
+                }).setOrigin(0.5).setDepth(403);
+                this.tweens.add({ targets: warnTxt, alpha: 0, y: warnTxt.y - 20, duration: 1200, onComplete: () => warnTxt.destroy() });
+                return;
+            }
+            this.startGame(this.selectedWeapon, this.selectedPet);
+        });
+
+        // 底部按钮行
+        const bottomY = GH - 50;
+        
+        // 铁匠铺按钮
+        const smithyBtn = this.add.rectangle(GW / 2 - 135, bottomY, 120, 32, 0x332211, 0.95)
             .setStrokeStyle(2, 0xffaa44).setInteractive().setDepth(401);
-        const smithyTxt = this.add.text(GW / 2 - 90, 505, '⚒ 铁匠铺', {
-            fontSize: '15px', fontFamily: 'Courier New', color: '#ffcc66', fontWeight: 'bold'
+        const smithyTxt = this.add.text(GW / 2 - 135, bottomY, '⚒ 铁匠铺', {
+            fontSize: '13px', fontFamily: 'Courier New', color: '#ffcc66', fontWeight: 'bold'
         }).setOrigin(0.5).setDepth(402);
         smithyBtn.on('pointerover', () => smithyBtn.setStrokeStyle(3, 0xffffff));
         smithyBtn.on('pointerout', () => smithyBtn.setStrokeStyle(2, 0xffaa44));
         smithyBtn.on('pointerdown', () => this.showSmithy());
 
-        const upgradeBtn = this.add.rectangle(GW / 2 + 90, 505, 160, 36, 0x221144, 0.95)
+        // 角色养成按钮
+        const upgradeBtn = this.add.rectangle(GW / 2 - 45, bottomY, 120, 32, 0x221144, 0.95)
             .setStrokeStyle(2, 0xaa88ff).setInteractive().setDepth(401);
-        const upgradeTxt = this.add.text(GW / 2 + 90, 505, '✦ 角色养成', {
-            fontSize: '15px', fontFamily: 'Courier New', color: '#ccaaff', fontWeight: 'bold'
+        const upgradeTxt = this.add.text(GW / 2 - 45, bottomY, '✦ 角色养成', {
+            fontSize: '13px', fontFamily: 'Courier New', color: '#ccaaff', fontWeight: 'bold'
         }).setOrigin(0.5).setDepth(402);
         upgradeBtn.on('pointerover', () => upgradeBtn.setStrokeStyle(3, 0xffffff));
         upgradeBtn.on('pointerout', () => upgradeBtn.setStrokeStyle(2, 0xaa88ff));
         upgradeBtn.on('pointerdown', () => this.showUpgradesPanel());
 
-        this.menuElements.push(resDisplay, smithyBtn, smithyTxt, upgradeBtn, upgradeTxt);
-
-        // 存档管理按钮（左下角）
-        const saveBtn = this.add.rectangle(90, GH - 38, 150, 32, 0x331122, 0.95)
+        // 存档管理按钮
+        const saveBtn = this.add.rectangle(GW / 2 + 45, bottomY, 120, 32, 0x331122, 0.95)
             .setStrokeStyle(2, 0xff6688).setInteractive().setDepth(401);
-        const saveTxt = this.add.text(90, GH - 38, '🗂 存档管理', {
+        const saveTxt = this.add.text(GW / 2 + 45, bottomY, '🗂 存档管理', {
             fontSize: '13px', fontFamily: 'Courier New', color: '#ff99bb', fontWeight: 'bold'
         }).setOrigin(0.5).setDepth(402);
         saveBtn.on('pointerover', () => saveBtn.setStrokeStyle(3, 0xffffff));
         saveBtn.on('pointerout', () => saveBtn.setStrokeStyle(2, 0xff6688));
         saveBtn.on('pointerdown', () => this.showSaveManager());
-        this.menuElements.push(saveBtn, saveTxt);
+
+        // 每日挑战按钮
+        const today = new Date();
+        const dailyBtn = this.add.rectangle(GW / 2 + 135, bottomY, 120, 32, 0x442266, 0.95)
+            .setStrokeStyle(2, 0xff00ff).setInteractive().setDepth(401);
+        const dailyText = this.add.text(GW / 2 + 135, bottomY,
+            `🌟 每日(${today.getMonth() + 1}/${today.getDate()})`, {
+            fontSize: '12px', fontFamily: 'Courier New', color: '#ff88ff', fontWeight: 'bold',
+            stroke: '#000', strokeThickness: 1
+        }).setOrigin(0.5).setDepth(402);
+        dailyBtn.on('pointerover', () => dailyBtn.setStrokeStyle(3, 0xffffff));
+        dailyBtn.on('pointerout', () => dailyBtn.setStrokeStyle(2, 0xff00ff));
+        dailyBtn.on('pointerdown', () => {
+            this.showCenterText('功能开发中...', '#ff88ff', 2000);
+        });
 
         // 新武器解锁提示
         if (this._unlockedNewWeapons && this._unlockedNewWeapons.length > 0) {
             const unlockMsg = this._unlockedNewWeapons.map(w => WeaponFactory.info(w).name).join('、');
-            const unlockTxt = this.add.text(GW / 2, 150, `🏆 新武器解锁: ${unlockMsg}!`, {
-                fontSize: '18px', fontFamily: 'Courier New', color: '#44ff88',
+            const unlockTxt = this.add.text(GW / 2, 120, `🏆 新武器解锁: ${unlockMsg}!`, {
+                fontSize: '16px', fontFamily: 'Courier New', color: '#44ff88',
                 stroke: '#000', strokeThickness: 3, fontWeight: 'bold'
             }).setOrigin(0.5).setDepth(401);
             this.tweens.add({ targets: unlockTxt, alpha: { from: 1, to: 0.4 }, yoyo: true, duration: 800, repeat: 3 });
@@ -4812,33 +5152,18 @@ class GameScene extends Phaser.Scene {
             this._unlockedNewWeapons = null;
         }
 
-        const today = new Date();
-        const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-        const dailyBtn = this.add.rectangle(GW / 2, GH - 75, 220, 38, 0x442266, 0.95)
-            .setStrokeStyle(2, 0xff00ff).setInteractive().setDepth(401);
-        const dailyText = this.add.text(GW / 2, GH - 75,
-            `🌟 每日挑战 (${today.getMonth() + 1}/${today.getDate()})`, {
-            fontSize: '14px', fontFamily: 'Courier New', color: '#ff88ff', fontWeight: 'bold',
-            stroke: '#000', strokeThickness: 2
-        }).setOrigin(0.5).setDepth(402);
-        dailyBtn.on('pointerover', () => dailyBtn.setStrokeStyle(3, 0xffffff));
-        dailyBtn.on('pointerout', () => dailyBtn.setStrokeStyle(2, 0xff00ff));
-        dailyBtn.on('pointerdown', () => {
-            this.startDailyChallenge(seed);
-        });
-        this.menuElements.push(dailyBtn, dailyText);
-
-        const best = this.add.text(GW - 25, 25, `最佳 ${this.formatTime(this.saveData.bestTime)} | ${this.saveData.achievements.length}/30 🏆`, {
-            fontSize: '11px', fontFamily: 'Courier New', color: '#ffd700',
+        // 右上角最佳时间和统计
+        const best = this.add.text(GW - 20, 20, `最佳 ${this.formatTime(this.saveData.bestTime)} | ${this.saveData.achievements.length}/30 🏆`, {
+            fontSize: '10px', fontFamily: 'Courier New', color: '#ffd700',
             stroke: '#000', strokeThickness: 1
         }).setOrigin(1, 0).setDepth(401);
 
-        const stats = this.add.text(GW - 90, GH - 38,
+        const stats = this.add.text(GW - 80, GH - 20,
             `💰 ${this.saveData.totalGold} | 🏃 ${this.saveData.totalRuns} | 👑 ${this.saveData.highestBoss}`, {
-            fontSize: '11px', fontFamily: 'Courier New', color: '#aaa'
+            fontSize: '10px', fontFamily: 'Courier New', color: '#aaa'
         }).setOrigin(0.5).setDepth(401);
 
-        this.menuElements.push(bg, title, titleGlow, subtitle, diffTitle, wpTitle, tips, dailyBtn, dailyText, best, stats);
+        this.menuElements.push(bg, title, titleGlow, subtitle, diffTitle, wpTitle, petTitle, startBtn, startTxt, smithyBtn, smithyTxt, upgradeBtn, upgradeTxt, saveBtn, saveTxt, dailyBtn, dailyText, best, stats);
     }
 
     // ===== v5 局外养成：铁匠铺（玄铁升级 + 武器形态显示）=====
@@ -5470,7 +5795,7 @@ class GameScene extends Phaser.Scene {
         this.showCenterText(`🌟 每日挑战开始！🌟\n${descs}`, '#ff88ff', 3500);
     }
 
-    startGame(weaponType) {
+    startGame(weaponType, petType) {
         this.menuElements.forEach(e => e.destroy());
         this.menuElements = [];
         if (this.pauseElements) {
@@ -5590,19 +5915,19 @@ class GameScene extends Phaser.Scene {
         this.lastChestSpawn = 0;
         this.bossDamageBuff = false;
 
-        if (this.saveData.unlockedMinions.includes('light')) {
-            const m = new Minion(this, 'light');
-            m.spawn(0, 0);
-            this.minions.push(m);
+        // 宠物系统：根据选择的宠物类型生成
+        if (petType && PetConfigs[petType]) {
+            const pet = new Pet(this, petType);
+            pet.spawn(0, 0);
+            this.minions.push(pet);
         }
         // v5 影术加点：召唤暗影分身（每级 +1 个，最多 3 个）
         if (summonLv > 0) {
             const shadowCount = Math.min(3, summonLv);
             for (let i = 0; i < shadowCount; i++) {
-                const sm = new Minion(this, 'shadow');
-                sm.orbitRadius = 75 + i * 25;
+                const sm = new Pet(this, 'shadow');
+                sm.orbitRadius = 90 + i * 30;
                 sm.orbitAngle = (i / shadowCount) * Math.PI * 2;
-                sm.damage = 15 + summonLv * 5;
                 sm.spawn(0, 0);
                 this.minions.push(sm);
             }
@@ -6558,10 +6883,36 @@ class GameScene extends Phaser.Scene {
             const endX = this.playerWorldX + Math.cos(ang) * range;
             const endY = this.playerWorldY + Math.sin(ang) * range;
 
-            this.particles.lineBeam(GW / 2, GH / 2,
-                GW / 2 + Math.cos(ang) * range,
-                GH / 2 + Math.sin(ang) * range,
-                w.color, w.width);
+            // 冰霜法杖：添加可见的冰锥光束特效
+            if (w.id === 'staff') {
+                const sx = GW / 2, sy = GH / 2;
+                const ex = endX - this.playerWorldX + GW / 2;
+                const ey = endY - this.playerWorldY + GH / 2;
+                const dist = Phaser.Math.Distance.Between(sx, sy, ex, ey);
+                const midX = (sx + ex) / 2, midY = (sy + ey) / 2;
+                // 冰锥主体（蓝色光束）
+                const beam = this.add.rectangle(midX, midY, dist, 8, 0x88ddff, 0.8)
+                    .setOrigin(0.5).setRotation(ang).setDepth(100);
+                // 冰锥尖端（白色亮点）
+                const tip = this.add.circle(ex, ey, 12, 0xffffff, 0.9).setDepth(101);
+                // 冰霜粒子效果
+                for (let j = 0; j < 6; j++) {
+                    const px = sx + Math.random() * (ex - sx);
+                    const py = sy + Math.random() * (ey - sy);
+                    const particle = this.add.circle(px, py, 3 + Math.random() * 4, 0xaaffff, 0.7).setDepth(99);
+                    this.tweens.add({
+                        targets: particle, alpha: 0, scale: 2,
+                        duration: 400 + Math.random() * 300,
+                        onComplete: () => particle.destroy()
+                    });
+                }
+                // 光束消失动画
+                this.tweens.add({
+                    targets: [beam, tip], alpha: 0, scale: 0.5,
+                    duration: 300, ease: 'Cubic.easeOut',
+                    onComplete: () => { beam.destroy(); tip.destroy(); }
+                });
+            }
 
             const hits = this.enemyManager.getEnemiesOnLine(
                 this.playerWorldX, this.playerWorldY, endX, endY, w.width
@@ -7299,7 +7650,7 @@ class GameScene extends Phaser.Scene {
         const lockedWeapons = allWTypes.filter(w => !this.saveData.unlockedWeapons.includes(w));
         const freeItem = lockedWeapons.length > 0
             ? { id: 'unlock_weapon', name: '解锁新武器', icon: '🔑', desc: `解锁${WeaponFactory.info(lockedWeapons[0]).name}`, cost: 0, color: 0x44ff88, enabled: true }
-            : { id: 'free', name: '免费奖励', icon: '🎁', desc: '武器经验+5/生命恢复/新随从', cost: 0, color: 0x44ff88, enabled: true };
+            : { id: 'free', name: '免费奖励', icon: '🎁', desc: '武器经验+5/生命恢复/新宠物', cost: 0, color: 0x44ff88, enabled: true };
 
         // 武器合成选项
         const canFuse = this.runtime.secondaryWeapon &&
@@ -7316,10 +7667,10 @@ class GameScene extends Phaser.Scene {
             cost: 0, color: fusionConfig.color, enabled: true
         } : null;
 
-        // 随从强化选项（随从系统独立化）
+        // 宠物强化选项（宠物系统独立化）
         const hasMinion = this.minions && this.minions.length > 0;
         const minionItem = hasMinion ? {
-            id: 'minion_up', name: '随从强化', icon: '🐺', desc: '随机强化一个随从', cost: 200, color: 0x88ff44,
+            id: 'minion_up', name: '宠物强化', icon: '🐺', desc: '随机强化一个宠物', cost: 200, color: 0x88ff44,
             enabled: this.runtime.gold >= 200
         } : null;
 
@@ -7480,10 +7831,10 @@ class GameScene extends Phaser.Scene {
                     if (avail.length > 0) {
                         const nm2 = avail[Math.floor(Math.random() * avail.length)];
                         this.saveData.unlockedMinions.push(nm2);
-                        const m2 = new Minion(this, nm2);
+                        const m2 = new Pet(this, nm2);
                         m2.spawn(this.playerWorldX, this.playerWorldY);
                         this.minions.push(m2);
-                        this.showCenterText('解锁新随从!', '#44ff88');
+                        this.showCenterText('解锁新宠物!', '#44ff88');
                     } else {
                         this.runtime.specLevels.atk = (this.runtime.specLevels.atk || 0) + 2;
                         this.runtime.updateMaxHp();
@@ -7527,9 +7878,9 @@ class GameScene extends Phaser.Scene {
                     const m = this.minions[Math.floor(Math.random() * this.minions.length)];
                     const upgrades = ['dmg', 'spd', 'ele'];
                     const up = upgrades[Math.floor(Math.random() * upgrades.length)];
-                    if (up === 'dmg') { m.dmgMul = (m.dmgMul || 1) + 0.3; this.showCenterText('随从攻击力+30%!', '#88ff44'); }
-                    if (up === 'spd') { m.spdMul = (m.spdMul || 1) + 0.2; this.showCenterText('随从攻速+20%!', '#88ff44'); }
-                    if (up === 'ele') { m.elementBonus = (m.elementBonus || 0) + 5; this.showCenterText('随从元素伤害+5!', '#88ff44'); }
+                    if (up === 'dmg') { m.dmgMul = (m.dmgMul || 1) + 0.3; this.showCenterText('宠物攻击力+30%!', '#88ff44'); }
+                    if (up === 'spd') { m.spdMul = (m.spdMul || 1) + 0.2; this.showCenterText('宠物攻速+20%!', '#88ff44'); }
+                    if (up === 'ele') { m.elementBonus = (m.elementBonus || 0) + 5; this.showCenterText('宠物元素伤害+5!', '#88ff44'); }
                 }
                 break;
             }
