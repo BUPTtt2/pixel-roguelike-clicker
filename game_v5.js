@@ -2151,7 +2151,7 @@ class Boss {
         this.accelRate = 0.12; this.hitRadius = 55;
         this.container = null; this.hpBar = null; this.hpBarBg = null;
         this.nameText = null; this.lastSpecial = 0;
-        this.specialCooldown = 2200; this.attackCooldown = 0;
+        this.specialCooldown = 1500; this.attackCooldown = 0;
         this.phase = 1; this.bossLevel = 1;
         this.config = BossConfigs.find(c => c.id === type) || BossConfigs[0];
     }
@@ -2534,10 +2534,30 @@ class Boss {
     }
     cleave() {
         const radius = this.phase === 3 ? 200 : (this.phase === 2 ? 160 : 120);
-        this.scene.particles.explosion(this.screenX(), this.screenY(), radius, this.config.color);
-        const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
-            this.scene.playerWorldX, this.scene.playerWorldY);
-        if (d < radius) this.scene.playerTakeDamage(this.damage * 0.9);
+        // 预警圆圈（0.5秒后爆炸）
+        const sx = this.screenX(), sy = this.screenY();
+        const warn = this.scene.add.circle(sx, sy, radius, 0xff0000, 0.15).setDepth(95).setStrokeStyle(3, 0xff0000, 0.6);
+        this.scene.tweens.add({
+            targets: warn, alpha: 0.4, scale: 1.1,
+            duration: 500, yoyo: true, repeat: 1,
+            onComplete: () => {
+                warn.destroy();
+                // 爆炸特效
+                this.scene.particles.explosion(sx, sy, radius, this.config.color);
+                this.scene.particles.explosion(sx, sy, radius * 0.6, 0xffffff);
+                // 斩击弧线
+                const slashArc = this.scene.add.circle(sx, sy, radius, 0xff4444, 0.4).setDepth(96);
+                this.scene.tweens.add({
+                    targets: slashArc, alpha: 0, scale: 1.5,
+                    duration: 400, onComplete: () => slashArc.destroy()
+                });
+                // 伤害判定
+                const d = Phaser.Math.Distance.Between(this.worldX, this.worldY,
+                    this.scene.playerWorldX, this.scene.playerWorldY);
+                if (d < radius) this.scene.playerTakeDamage(this.damage * 1.1);
+            }
+        });
+        this.showBossText('横扫！', '#ff4444');
     }
     spawnMinions() {
         const count = this.phase === 3 ? 6 : (this.phase === 2 ? 4 : 3);
@@ -2721,41 +2741,90 @@ class Boss {
                 this.damage * 0.7, 'bone', { speed: 380, color: 0xa0a0a0 }));
         }
     }
-    flyAttack() { this.worldY -= 100; this.currentSpeed = this.speed * 1.5; }
+    flyAttack() {
+        // 飞行攻击：BOSS 跃起并俯冲玩家，留下残影
+        const sx = this.screenX(), sy = this.screenY();
+        // 残影效果
+        for (let i = 0; i < 4; i++) {
+            this.scene.time.delayedCall(i * 80, () => {
+                if (!this.alive) return;
+                const ghost = this.scene.add.circle(this.screenX(), this.screenY(),
+                    this.config.size * 0.4, this.config.glowColor, 0.4).setDepth(75);
+                this.scene.tweens.add({
+                    targets: ghost, alpha: 0, scale: 1.5,
+                    duration: 500, onComplete: () => ghost.destroy()
+                });
+            });
+        }
+        this.worldY -= 100; this.currentSpeed = this.speed * 1.8;
+        this.showBossText('俯冲！', '#88ff88');
+    }
     fireBreath() {
         const a = Math.atan2(this.scene.playerWorldY - this.worldY,
             this.scene.playerWorldX - this.worldX);
+        // 龙息预警
+        const sx = this.screenX(), sy = this.screenY();
+        const warn = this.scene.add.text(sx, sy - 50, '🔥', { fontSize: '32px' })
+            .setOrigin(0.5).setDepth(150);
+        this.scene.tweens.add({
+            targets: warn, scale: 1.5, alpha: 0,
+            duration: 600, onComplete: () => warn.destroy()
+        });
+        // 扇形火焰（6颗大火球）
         for (let i = 0; i < 6; i++) {
+            const offset = (i - 2.5) * 0.15;
             this.scene.projectiles.push(new Projectile(
                 this.scene, this.worldX, this.worldY,
-                this.worldX + Math.cos(a) * 300, this.worldY + Math.sin(a) * 300,
-                this.damage * 0.5, 'meteor', { speed: 250, color: 0xff4400, size: 8 }));
+                this.worldX + Math.cos(a + offset) * 350,
+                this.worldY + Math.sin(a + offset) * 350,
+                this.damage * 0.6, 'meteor',
+                { speed: 280, color: 0xff4400, size: 18 }));
         }
+        // 中心火焰柱
+        const beam = this.scene.add.rectangle(sx + Math.cos(a) * 100, sy + Math.sin(a) * 100,
+            200, 30, 0xff6600, 0.7).setOrigin(0.5).setRotation(a).setDepth(100);
+        this.scene.tweens.add({
+            targets: beam, alpha: 0, scale: 1.5,
+            duration: 500, onComplete: () => beam.destroy()
+        });
+        this.showBossText('龙息！', '#ff6600');
     }
     tornado() {
         for (let i = 0; i < 5; i++) {
-            setTimeout(() => {
+            this.scene.time.delayedCall(i * 200, () => {
+                if (!this.alive) return;
                 const a = Math.random() * Math.PI * 2, d = 100 + Math.random() * 200;
-                this.scene.particles.explosion(GW / 2 + Math.cos(a) * d,
-                    GH / 2 + Math.sin(a) * d, 100, 0x88ff88);
-                const dd = Phaser.Math.Distance.Between(
-                    this.scene.playerWorldX + Math.cos(a) * d,
-                    this.scene.playerWorldY + Math.sin(a) * d,
+                const tx = this.scene.playerWorldX + Math.cos(a) * d;
+                const ty = this.scene.playerWorldY + Math.sin(a) * d;
+                const tsx = tx - this.scene.playerWorldX + GW / 2;
+                const tsy = ty - this.scene.playerWorldY + GH / 2;
+                // 可见的龙卷风
+                const tornado = this.scene.add.circle(tsx, tsy, 50, 0x88ff88, 0.4)
+                    .setDepth(90).setStrokeStyle(3, 0x44aa44, 0.8);
+                this.scene.tweens.add({
+                    targets: tornado, alpha: 0, scale: 2,
+                    duration: 600, onComplete: () => tornado.destroy()
+                });
+                this.scene.particles.explosion(tsx, tsy, 80, 0x88ff88);
+                const dd = Phaser.Math.Distance.Between(tx, ty,
                     this.scene.playerWorldX, this.scene.playerWorldY);
-                if (dd < 100) this.scene.playerTakeDamage(this.damage * 0.4);
-            }, i * 200);
+                if (dd < 100) this.scene.playerTakeDamage(this.damage * 0.5);
+            });
         }
+        this.showBossText('龙卷风！', '#88ff88');
     }
     meteorShower() {
+        this.showBossText('陨石雨！', '#ff4400');
         for (let i = 0; i < 15; i++) {
-            setTimeout(() => {
+            this.scene.time.delayedCall(i * 100, () => {
+                if (!this.alive) return;
                 const a = Math.random() * Math.PI * 2, r = Math.random() * 350;
                 this.scene.projectiles.push(new Projectile(
                     this.scene, this.worldX, this.worldY,
                     this.scene.playerWorldX + Math.cos(a) * r,
                     this.scene.playerWorldY + Math.sin(a) * r,
-                    this.damage * 0.6, 'meteor', { speed: 600, color: 0xff4400, size: 12 }));
-            }, i * 100);
+                    this.damage * 0.6, 'meteor', { speed: 600, color: 0xff4400, size: 16 }));
+            });
         }
     }
     darkSlash() {
@@ -2843,17 +2912,27 @@ class Boss {
         }
     }
     lightningStorm() {
+        this.showBossText('闪电风暴！', '#ffff00');
         for (let i = 0; i < 8; i++) {
-            setTimeout(() => {
+            this.scene.time.delayedCall(i * 150, () => {
+                if (!this.alive) return;
                 const a = Math.random() * Math.PI * 2, r = Math.random() * 300;
-                this.scene.particles.explosion(GW / 2 + Math.cos(a) * r,
-                    GH / 2 + Math.sin(a) * r, 60, 0xffff00);
-                const dd = Phaser.Math.Distance.Between(
-                    this.scene.playerWorldX + Math.cos(a) * r,
-                    this.scene.playerWorldY + Math.sin(a) * r,
+                const tx = this.scene.playerWorldX + Math.cos(a) * r;
+                const ty = this.scene.playerWorldY + Math.sin(a) * r;
+                const tsx = tx - this.scene.playerWorldX + GW / 2;
+                const tsy = ty - this.scene.playerWorldY + GH / 2;
+                // 可见闪电
+                const bolt = this.scene.add.rectangle(tsx, tsy, 6, 80, 0xffff00, 0.9)
+                    .setDepth(110);
+                this.scene.tweens.add({
+                    targets: bolt, alpha: 0, scaleY: 0.3,
+                    duration: 300, onComplete: () => bolt.destroy()
+                });
+                this.scene.particles.explosion(tsx, tsy, 70, 0xffff00);
+                const dd = Phaser.Math.Distance.Between(tx, ty,
                     this.scene.playerWorldX, this.scene.playerWorldY);
                 if (dd < 60) this.scene.playerTakeDamage(this.damage * 0.6);
-            }, i * 150);
+            });
         }
     }
     earthquake() {
@@ -2915,15 +2994,17 @@ class Boss {
     }
     summonAllies() { this.spawnMinions(); }
     ultimate() {
+        this.showBossText('湮灭终极！', '#ff00ff');
         for (let i = 0; i < 30; i++) {
-            setTimeout(() => {
+            this.scene.time.delayedCall(i * 80, () => {
+                if (!this.alive) return;
                 const a = Math.random() * Math.PI * 2, r = Math.random() * 400;
                 this.scene.projectiles.push(new Projectile(
                     this.scene, this.worldX, this.worldY,
                     this.scene.playerWorldX + Math.cos(a) * r,
                     this.scene.playerWorldY + Math.sin(a) * r,
-                    this.damage * 0.8, 'meteor', { speed: 700, color: 0xff00ff, size: 14 }));
-            }, i * 80);
+                    this.damage * 0.8, 'meteor', { speed: 700, color: 0xff00ff, size: 18 }));
+            });
         }
         this.scene.showCenterText('湮灭！', '#ff0000');
     }
@@ -3063,6 +3144,21 @@ class Boss {
             this.barSegmentsText.setText(`${seg}  ${this.currentBar}/${this.totalBars}`);
         }
     }
+    // 彻底销毁 BOSS：停止 tween，销毁所有元素，防止残留
+    forceDestroy() {
+        if (this.scene && this.scene.tweens) {
+            const targets = [this.container, this.bossImage, this.bossAura, this.bossBody,
+                this.bossLeftArm, this.bossRightArm, this.outerGlow, this.midGlow, this.innerGlow];
+            targets.forEach(t => { if (t) this.scene.tweens.killTweensOf(t); });
+        }
+        if (this.container) { this.container.destroy(); this.container = null; }
+        if (this.hpBar) { this.hpBar.destroy(); this.hpBar = null; }
+        if (this.hpBarBg) { this.hpBarBg.destroy(); this.hpBarBg = null; }
+        if (this.hpBarGlow) { this.hpBarGlow.destroy(); this.hpBarGlow = null; }
+        if (this.nameText) { this.nameText.destroy(); this.nameText = null; }
+        if (this.barSegmentsText) { this.barSegmentsText.destroy(); this.barSegmentsText = null; }
+        this.alive = false;
+    }
     die() {
         this.alive = false;
         // 清除深渊魔王的减速效果
@@ -3077,15 +3173,7 @@ class Boss {
             this.scene.runtime.addExp(Math.floor(cfg.exp * 0.3));
             this.scene.particles.explosion(this.screenX(), this.screenY(), 60, cfg.glowColor);
             // 立即销毁容器，防止尸体堆积
-            if (this.container) {
-                this.container.destroy();
-                this.container = null;
-            }
-            if (this.hpBar) this.hpBar.destroy();
-            if (this.hpBarBg) this.hpBarBg.destroy();
-            if (this.hpBarGlow) this.hpBarGlow.destroy();
-            if (this.nameText) this.nameText.destroy();
-            this.hpBar = null; this.hpBarBg = null; this.hpBarGlow = null; this.nameText = null;
+            this.forceDestroy();
             // 清空BossManager中的引用
             if (this.scene.bossManager && this.scene.bossManager.phantoms) {
                 const idx = this.scene.bossManager.phantoms.indexOf(this);
@@ -3117,15 +3205,7 @@ class Boss {
             }
         }
         // 立即销毁容器，防止尸体堆积
-        if (this.container) {
-            this.container.destroy();
-            this.container = null;
-        }
-        if (this.hpBar) this.hpBar.destroy();
-        if (this.hpBarBg) this.hpBarBg.destroy();
-        if (this.hpBarGlow) this.hpBarGlow.destroy();
-        if (this.nameText) this.nameText.destroy();
-        this.hpBar = null; this.hpBarBg = null; this.hpBarGlow = null; this.nameText = null;
+        this.forceDestroy();
         // 清空BossManager中的引用
         if (this.scene.bossManager && this.scene.bossManager.boss === this) {
             this.scene.bossManager.boss = null;
@@ -3642,13 +3722,14 @@ class BossManager {
             this.bossUI.forEach(e => e.destroy());
             this.bossUI = [];
         }
-        // 彻底清理旧 BOSS：设 null 防止残留
+        // 彻底清理旧 BOSS（使用 forceDestroy 停 tween + 销毁所有元素）
         if (this.boss) {
-            if (this.boss.container) this.boss.container.destroy();
+            this.boss.forceDestroy();
             this.boss = null;
         }
+        // 清理幻影/分裂体
         if (this.phantoms) {
-            this.phantoms.forEach(p => { if (p.container) p.container.destroy(); });
+            this.phantoms.forEach(p => p.forceDestroy());
             this.phantoms = [];
         }
         const cfg = BossConfigs[this.currentBossIndex % BossConfigs.length];
@@ -3666,11 +3747,11 @@ class BossManager {
         this.bossUI.forEach(e => e.destroy());
         this.bossUI = [];
         if (this.boss) {
-            if (this.boss.container) this.boss.container.destroy();
+            this.boss.forceDestroy();
             this.boss = null;
         }
         if (this.phantoms) {
-            this.phantoms.forEach(p => { if (p.container) p.container.destroy(); });
+            this.phantoms.forEach(p => p.forceDestroy());
             this.phantoms = [];
         }
         this.currentBossIndex = 0;
